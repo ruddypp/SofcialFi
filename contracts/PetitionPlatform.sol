@@ -19,6 +19,7 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
         uint256 id;
         string title;
         string description;
+        string imageHash;
         address creator;
         uint256 createdAt;
         uint256 deadline;
@@ -41,6 +42,7 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
         uint256 indexed petitionId,
         address indexed creator,
         string title,
+        string imageHash,
         uint256 deadline,
         bool usedToken
     );
@@ -74,6 +76,7 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
      * @dev Buat petition baru
      * @param _title Judul petition
      * @param _description Deskripsi petition
+     * @param _imageHash IPFS hash untuk gambar campaign (dari Pinata)
      * @param _durationInDays Durasi petition dalam hari
      * 
      * User bisa pakai Campaign Token (gratis) atau bayar dengan ETH
@@ -82,11 +85,13 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
     function createPetition(
         string memory _title,
         string memory _description,
+        string memory _imageHash,
         uint256 _durationInDays
     ) external payable nonReentrant {
         require(isMember(msg.sender), "Not a DAO member");
         require(bytes(_title).length > 0, "Title cannot be empty");
         require(bytes(_description).length > 0, "Description cannot be empty");
+        require(bytes(_imageHash).length > 0, "Image hash cannot be empty");
         require(_durationInDays > 0 && _durationInDays <= 365, "Invalid duration");
         
         bool usedToken = false;
@@ -124,6 +129,7 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
             id: petitionId,
             title: _title,
             description: _description,
+            imageHash: _imageHash,
             creator: msg.sender,
             createdAt: block.timestamp,
             deadline: deadline,
@@ -131,7 +137,7 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
             isActive: true
         });
         
-        emit PetitionCreated(petitionId, msg.sender, _title, deadline, usedToken);
+        emit PetitionCreated(petitionId, msg.sender, _title, _imageHash, deadline, usedToken);
     }
     
     /**

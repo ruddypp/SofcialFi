@@ -103,6 +103,12 @@
 					},
 					{
 						"indexed": false,
+						"internalType": "string",
+						"name": "imageHash",
+						"type": "string"
+					},
+					{
+						"indexed": false,
 						"internalType": "uint256",
 						"name": "deadline",
 						"type": "uint256"
@@ -213,6 +219,11 @@
 						"type": "string"
 					},
 					{
+						"internalType": "string",
+						"name": "_imageHash",
+						"type": "string"
+					},
+					{
 						"internalType": "uint256",
 						"name": "_durationInDays",
 						"type": "uint256"
@@ -261,6 +272,11 @@
 							{
 								"internalType": "string",
 								"name": "description",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "imageHash",
 								"type": "string"
 							},
 							{
@@ -448,6 +464,11 @@
 						"type": "string"
 					},
 					{
+						"internalType": "string",
+						"name": "imageHash",
+						"type": "string"
+					},
+					{
 						"internalType": "address",
 						"name": "creator",
 						"type": "address"
@@ -580,11 +601,12 @@
 				"closePetition(uint256)": {
 					"details": "Tutup petition sebelum deadline Hanya creator atau owner yang bisa close"
 				},
-				"createPetition(string,string,uint256)": {
+				"createPetition(string,string,string,uint256)": {
 					"details": "Buat petition baru",
 					"params": {
 						"_description": "Deskripsi petition",
 						"_durationInDays": "Durasi petition dalam hari  User bisa pakai Campaign Token (gratis) atau bayar dengan ETH Setiap 5 petition berbayar, user dapat 1 Campaign Token reward",
+						"_imageHash": "IPFS hash untuk gambar campaign (dari Pinata)",
 						"_title": "Judul petition"
 					}
 				},
@@ -696,11 +718,11 @@
 			]
 		},
 		"contracts/PetitionPlatform.sol": {
-			"keccak256": "0x5c878cf6a2ffc1da991f7e81bad627935d834a48fd2765376e5da40c3c5a673f",
+			"keccak256": "0x0a1e7b604cc72ae1d10092413b10c9b71226a3f1206923b228c74087b866ee59",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://a9582034b3e726f9fe12d2cc2bc2aacee243fa7799879f3cef016f7b4b285496",
-				"dweb:/ipfs/QmRvHNxnuMEkL7ku8Vwz1EQ8V6tZ2U5AiBwxVMduoF9WnJ"
+				"bzz-raw://cbe547b649f2cb9de6448e3071a7530e024b1a9b39e5a4854468fe337c9e727e",
+				"dweb:/ipfs/QmYNCzDULgSmHVNyywqSbFDp9bLBoTNRd9U5ovLNE5QPJU"
 			]
 		}
 	},

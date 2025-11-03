@@ -1,4 +1,60 @@
-# 🗳️ DAO Petition Platform - Complete Guide
+---
+
+## 🖼️ IPFS Integration Guide
+
+### Apa itu IPFS?
+
+**IPFS (InterPlanetary File System)** adalah storage terdesentralisasi untuk menyimpan file (gambar, video, dokumen).
+
+**Kenapa pakai IPFS?**
+- ✅ Decentralized (tidak ada single point of failure)
+- ✅ Permanent storage (file tidak hilang)
+- ✅ Murah gas (hanya simpan hash, bukan file)
+- ✅ Industry standard untuk Web3
+
+### Upload Gambar ke Pinata (Manual)
+
+**Step 1: Daftar Pinata**
+1. Kunjungi: https://pinata.cloud
+2. Sign up (gratis 1GB storage)
+3. Verify email
+
+**Step 2: Upload File**
+1. Login ke Dashboard
+2. Klik **"Upload"** → **"File"**
+3. Pilih gambar campaign (PNG/JPG, max 100MB)
+4. Klik **"Upload"**
+
+**Step 3: Get IPFS Hash**
+1. Setelah upload, lihat list files
+2. Copy **CID** (Content Identifier)
+   ```
+   Contoh: QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
+   ```
+3. Hash ini yang digunakan di smart contract!
+
+**Step 4: Verify Image**
+- Buka: `https://ipfs.io/ipfs/[YOUR_HASH]`
+- Atau: `https://gateway.pinata.cloud/ipfs/[YOUR_HASH]`
+- Gambar harus muncul
+
+### IPFS Hash untuk Testing
+
+Gunakan hash ini untuk testing tanpa upload manual:
+
+```
+QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
+QmT4AeNYvPZRfRxDfz8tYvJxNqw1N3Kj7s9X2pLmH5vQaB
+QmP7RdKvY3sN8tHwJxQzVmL9pFgB5rC4aE6nX2mW1sT9qD
+QmZ9XvLmK4tP2jNwRyHqC5sB8aD7fG3nM6xW1pE9rV4qT
+QmK3LnR8pW7sT5jC2fN9xD4vM6aB1qE8hY7zP3mX9rG5wL
+```
+
+---
+
+## 🌐 Frontend Integration (untuk Developer)
+
+### Upload Image via Pinata API# 🗳️ DAO Petition Platform - Complete Guide
 
 Platform voting terdesentralisasi untuk petition/campaign dengan sistem reward berbasis aktivitas.
 
@@ -19,7 +75,7 @@ Platform voting terdesentralisasi untuk petition/campaign dengan sistem reward b
 1. **User Biasa (Public)**: Bisa sign petition gratis, 1 wallet = 1 signature
 2. **DAO Member**: 
    - Mint NFT (0.02 ETH) → dapat 1 Campaign Token gratis
-   - Bisa buat petition dengan:
+   - Bisa buat petition dengan **gambar (IPFS hash)** menggunakan:
      - Campaign Token (gratis) ATAU
      - Bayar 0.01 ETH per petition
    - Setiap 5 petition berbayar → dapat 1 Campaign Token reward
@@ -155,6 +211,19 @@ Sekarang 3 contract sudah di-deploy, tapi belum terhubung. Kita perlu setup conn
 4. Klik **"transact"**
 5. ✅ Tunggu sampai transaction success
 
+### 4C. Setup CampaignToken (Izinkan DAOMembership untuk Mint) 💡 BARU!
+⚠️ Langkah ini WAJIB untuk mengatasi error "Not authorized" saat mintMembership.
+
+Klik contract CampaignToken di "Deployed Contracts"
+
+Cari function setDAOMembershipContract (fungsi yang ditambahkan pada modifikasi kode)
+
+Input address DAOMembership dari Step 2        _daoMembershipContract: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2    
+
+Klik "transact"
+
+✅ Tunggu sampai transaction success
+
 ---
 
 ### ✅ Deployment Complete!
@@ -206,6 +275,32 @@ Sekarang platform sudah siap digunakan. Mari kita test!
 
 **Menggunakan Account 2** (yang sudah punya NFT)
 
+### Persiapan Upload Gambar ke Pinata:
+
+**PENTING:** Sebelum buat petition, lo perlu upload gambar dulu ke Pinata untuk dapat IPFS hash.
+
+#### Cara Upload ke Pinata (Manual Testing):
+
+1. **Daftar Pinata** (gratis): https://pinata.cloud
+2. **Login** dan masuk ke Dashboard
+3. **Upload File**:
+   - Klik "Upload" → "File"
+   - Pilih gambar campaign (contoh: poster petition)
+   - Klik "Upload"
+4. **Copy IPFS Hash**:
+   - Setelah upload, lihat kolom "CID"
+   - Copy hash tersebut (contoh: `QmX7G3RzKvZqkVhHPqXmvP8uZYvNrq6h9Y4J...`)
+
+**Contoh IPFS Hash untuk Testing:**
+```
+QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
+```
+(Ini contoh valid hash, bisa pakai ini dulu untuk testing)
+
+---
+
+### Create Petition di Smart Contract:
+
 1. Pastikan masih pakai **Account 2**
 2. Buka contract **PetitionPlatform**
 3. Cari function **`createPetition`**
@@ -213,6 +308,7 @@ Sekarang platform sudah siap digunakan. Mari kita test!
    ```
    _title: "Stop Deforestation"
    _description: "We need to protect our forests for future generations"
+   _imageHash: "QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3"
    _durationInDays: 30
    ```
 5. **VALUE: 0** (karena pakai token gratis, tidak perlu ETH)
@@ -221,8 +317,9 @@ Sekarang platform sudah siap digunakan. Mari kita test!
 
 **Verifikasi:**
 - Cek function **`petitionCounter`** → harus return `1`
-- Cek function **`getPetition`** → input `0` → lihat detail petition
+- Cek function **`getPetition`** → input `0` → lihat detail petition (termasuk imageHash!)
 - Buka **CampaignToken** → cek `balanceOf` Account 2 → harus `0` (token sudah di-burn)
+- **Test IPFS Image**: Buka browser → `https://ipfs.io/ipfs/QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3` → gambar muncul!
 
 ---
 
@@ -235,6 +332,7 @@ Sekarang platform sudah siap digunakan. Mari kita test!
    ```
    _title: "Free Education for All"
    _description: "Education is a human right and should be accessible to everyone"
+   _imageHash: "QmT4AeNYvPZRfRxDfz8tYvJxNqw1N3Kj7s9X2pLmH5vQaB"
    _durationInDays: 45
    ```
 3. **Set VALUE**: `0.01` Ether (WAJIB bayar karena token sudah habis)
@@ -286,6 +384,7 @@ Buat 3 petition lagi dengan bayar ETH (total jadi 4 petition berbayar):
 ```
 _title: "Clean Water Initiative"
 _description: "Access to clean water for rural communities"
+_imageHash: "QmP7RdKvY3sN8tHwJxQzVmL9pFgB5rC4aE6nX2mW1sT9qD"
 _durationInDays: 60
 VALUE: 0.01 Ether
 ```
@@ -294,6 +393,7 @@ VALUE: 0.01 Ether
 ```
 _title: "Renewable Energy Now"
 _description: "Transition to sustainable energy sources"
+_imageHash: "QmZ9XvLmK4tP2jNwRyHqC5sB8aD7fG3nM6xW1pE9rV4qT"
 _durationInDays: 90
 VALUE: 0.01 Ether
 ```
@@ -302,6 +402,7 @@ VALUE: 0.01 Ether
 ```
 _title: "Animal Rights Protection"
 _description: "Stronger laws to protect animal welfare"
+_imageHash: "QmK3LnR8pW7sT5jC2fN9xD4vM6aB1qE8hY7zP3mX9rG5wL"
 _durationInDays: 30
 VALUE: 0.01 Ether
 ```
@@ -321,6 +422,7 @@ VALUE: 0.01 Ether
    ```
    _title: "Digital Privacy Rights"
    _description: "Protect user data and privacy online"
+   _imageHash: "QmF8VwT2pL9kN6sR4jH3xC7mD5aB1qE9vY8zP2nX7rG4wK"
    _durationInDays: 60
    VALUE: 0 (pakai token, tidak perlu ETH!)
    ```
@@ -370,11 +472,19 @@ VALUE: 0.01 Ether
 
 **Basic Functions:**
 - ✅ Mint NFT → dapat 1 token gratis
-- ✅ Buat petition dengan token gratis
-- ✅ Buat petition dengan bayar ETH
+- ✅ Buat petition dengan token gratis + IPFS hash
+- ✅ Buat petition dengan bayar ETH + IPFS hash
 - ✅ Sign petition (1 wallet = 1 sign)
 - ✅ Sign duplicate → error
 - ✅ Sign closed petition → error
+- ✅ View petition image via IPFS gateway
+
+**IPFS Integration:**
+- ✅ Upload gambar ke Pinata
+- ✅ Dapat IPFS hash
+- ✅ Store hash di smart contract
+- ✅ Retrieve & display image dari IPFS
+- ✅ Image accessible via multiple gateways
 
 **Reward System:**
 - ✅ Setelah 5 petition berbayar → dapat 1 token reward
@@ -424,6 +534,24 @@ Contoh:
 - paidPetitionCount = 5 → dapat reward!
 ```
 
+### Q: IPFS hash tidak valid?
+**A:** 
+- Hash harus format: `Qm...` (46-59 karakter)
+- Verify hash di: `https://ipfs.io/ipfs/[YOUR_HASH]`
+- Pastikan file sudah ter-upload di Pinata
+
+### Q: Gambar tidak muncul saat akses IPFS?
+**A:**
+- Coba gateway alternatif:
+  - `https://ipfs.io/ipfs/[hash]`
+  - `https://gateway.pinata.cloud/ipfs/[hash]`
+  - `https://cloudflare-ipfs.com/ipfs/[hash]`
+- Tunggu beberapa detik (IPFS butuh waktu propagate)
+- Pastikan file tidak terhapus dari Pinata
+
+### Q: Error "Image hash cannot be empty"
+**A:** Parameter `_imageHash` wajib diisi! Upload gambar ke Pinata dulu untuk dapat hash.
+
 ### Q: Petition otomatis expired?
 **A:** Ya, setelah deadline lewat, petition tidak bisa di-sign lagi (cek `block.timestamp`)
 
@@ -448,6 +576,102 @@ Contoh:
 ---
 
 ## 🚀 Next Steps (After Testing)
+
+### Frontend Integration Example
+
+**HTML Form:**
+```html
+<form id="createPetitionForm">
+  <input type="text" id="title" placeholder="Petition Title" required>
+  <textarea id="description" placeholder="Description" required></textarea>
+  <input type="file" id="imageFile" accept="image/*" required>
+  <input type="number" id="duration" placeholder="Duration (days)" required>
+  <button type="submit">Create Petition</button>
+</form>
+```
+
+**JavaScript (Upload to Pinata + Create Petition):**
+```javascript
+const PINATA_API_KEY = 'your_api_key';
+const PINATA_SECRET = 'your_secret';
+
+document.getElementById('createPetitionForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // 1. Get form data
+  const title = document.getElementById('title').value;
+  const description = document.getElementById('description').value;
+  const duration = document.getElementById('duration').value;
+  const imageFile = document.getElementById('imageFile').files[0];
+  
+  // 2. Upload image to Pinata
+  const formData = new FormData();
+  formData.append('file', imageFile);
+  
+  const uploadResponse = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+    method: 'POST',
+    headers: {
+      'pinata_api_key': PINATA_API_KEY,
+      'pinata_secret_api_key': PINATA_SECRET
+    },
+    body: formData
+  });
+  
+  const { IpfsHash } = await uploadResponse.json();
+  console.log('IPFS Hash:', IpfsHash);
+  
+  // 3. Connect to smart contract (Web3.js example)
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  const signer = provider.getSigner();
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+  
+  // 4. Create petition with image hash
+  const tx = await contract.createPetition(
+    title,
+    description,
+    IpfsHash,  // ← IPFS hash from Pinata
+    duration,
+    { value: ethers.utils.parseEther('0.01') } // or 0 if using token
+  );
+  
+  await tx.wait();
+  console.log('Petition created!');
+});
+```
+
+**Display Image in Frontend:**
+```javascript
+// Get petition from contract
+const petition = await contract.getPetition(petitionId);
+
+// Display image using IPFS gateway
+const imageUrl = `https://ipfs.io/ipfs/${petition.imageHash}`;
+// or
+const imageUrl = `https://gateway.pinata.cloud/ipfs/${petition.imageHash}`;
+
+document.getElementById('petitionImage').src = imageUrl;
+```
+
+---
+
+### Alternative: Web3.Storage (Free IPFS Service)
+
+Kalau tidak mau pakai Pinata, bisa pakai **Web3.Storage** (gratis unlimited):
+
+```javascript
+import { Web3Storage } from 'web3.storage';
+
+const client = new Web3Storage({ token: 'YOUR_API_TOKEN' });
+
+// Upload file
+const file = document.getElementById('imageFile').files[0];
+const cid = await client.put([file]);
+
+console.log('IPFS CID:', cid);
+// Use this CID in createPetition()
+```
+
+---
 
 1. **Deploy to Testnet** (Sepolia/Goerli):
    - Ganti network di Remix

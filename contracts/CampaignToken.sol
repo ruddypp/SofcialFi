@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract CampaignToken is ERC20, Ownable {
     address public petitionContract;
+    address public daoMembershipContract; // <-- VARIABEL BARU
     
     constructor() ERC20("Campaign Token", "CAMP") Ownable(msg.sender) {}
     
@@ -24,11 +25,25 @@ contract CampaignToken is ERC20, Ownable {
     }
     
     /**
+     * @dev Set address DAOMembership contract (BARU)
+     * Diperlukan agar DAOMembership bisa memanggil mint() untuk token gratis
+     */
+    function setDAOMembershipContract(address _daoMembershipContract) external onlyOwner {
+        require(_daoMembershipContract != address(0), "Invalid address");
+        daoMembershipContract = _daoMembershipContract;
+    }
+    
+    /**
      * @dev Mint token baru
-     * Hanya bisa dipanggil oleh PetitionContract atau Owner
+     * Hanya bisa dipanggil oleh PetitionContract, Owner, atau DAOMembership Contract
      */
     function mint(address to, uint256 amount) external {
-        require(msg.sender == petitionContract || msg.sender == owner(), "Not authorized");
+        require(
+            msg.sender == petitionContract || 
+            msg.sender == owner() || 
+            msg.sender == daoMembershipContract, // <-- PENGECEKAN BARU
+            "Not authorized"
+        );
         _mint(to, amount);
     }
     

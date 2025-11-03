@@ -274,6 +274,19 @@
 			},
 			{
 				"inputs": [],
+				"name": "daoMembershipContract",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
 				"name": "decimals",
 				"outputs": [
 					{
@@ -345,6 +358,19 @@
 			{
 				"inputs": [],
 				"name": "renounceOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_daoMembershipContract",
+						"type": "address"
+					}
+				],
+				"name": "setDAOMembershipContract",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -547,7 +573,7 @@
 					"details": "Returns the number of decimals used to get its user representation. For example, if `decimals` equals `2`, a balance of `505` tokens should be displayed to a user as `5.05` (`505 / 10 ** 2`). Tokens usually opt for a value of 18, imitating the relationship between Ether and Wei. This is the default value returned by this function, unless it's overridden. NOTE: This information is only used for _display_ purposes: it in no way affects any of the arithmetic of the contract, including {IERC20-balanceOf} and {IERC20-transfer}."
 				},
 				"mint(address,uint256)": {
-					"details": "Mint token baru Hanya bisa dipanggil oleh PetitionContract atau Owner"
+					"details": "Mint token baru Hanya bisa dipanggil oleh PetitionContract, Owner, atau DAOMembership Contract"
 				},
 				"name()": {
 					"details": "Returns the name of the token."
@@ -557,6 +583,9 @@
 				},
 				"renounceOwnership()": {
 					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+				},
+				"setDAOMembershipContract(address)": {
+					"details": "Set address DAOMembership contract (BARU) Diperlukan agar DAOMembership bisa memanggil mint() untuk token gratis"
 				},
 				"setPetitionContract(address)": {
 					"details": "Set address PetitionPlatform contract Hanya bisa dipanggil sekali setelah PetitionPlatform di-deploy"
@@ -651,11 +680,11 @@
 			]
 		},
 		"contracts/CampaignToken.sol": {
-			"keccak256": "0xaaedcb077c704dcd3dd388f1bb716a5c33c5526ed8b7daef6fbae406aeac3acb",
+			"keccak256": "0xe8c0f6369c28ae627de754338a8df16872aed504fb7c6430aa37a1202bceb758",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://f8ea193b5bf268e5dcc7ac97aa6f9a65ad4ffd5dbc8bf5bd80255a7989e72b43",
-				"dweb:/ipfs/Qmbc2NkkJLye6qwUpRkSQYjMvGBBLfuGhPmyfXfAojksRP"
+				"bzz-raw://952b74f25a29138ff8a506eba215d767a0e8db4780bf5acb7f2d68db340d6e34",
+				"dweb:/ipfs/QmVFsQnE8CmvXajesWiszRYs1DdB59pjYpFVJoLHr1cszk"
 			]
 		}
 	},
