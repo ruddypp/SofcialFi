@@ -13,6 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * - Petition bisa dibuat dengan Campaign Token atau bayar ETH
  * - Siapa saja bisa sign petition (1 wallet = 1 signature)
  * - Setiap 5 petition berbayar, creator dapat 1 Campaign Token reward
+ * - NEW: Durasi campaign bisa diatur dengan pricing dinamis
  */
 contract PetitionPlatform is Ownable, ReentrancyGuard {
     struct Petition {
@@ -25,14 +26,21 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
         uint256 deadline;
         uint256 signatureCount;
         bool isActive;
+        uint256 durationDays; // Track durasi yang dipilih
     }
     
     address public daoMembership;
     address public campaignToken;
     
     uint256 public petitionCounter;
-    uint256 public campaignFee = 0.01 ether;
-    uint256 public rewardThreshold = 5;
+    
+    // Pricing Configuration
+    uint256 public baseCampaignFee = 0.002 ether; // Fee untuk 7 hari (default)
+    uint256 public baseDurationDays = 7; // Durasi default
+    uint256 public additionalDayFee = 0.0003 ether; // Fee per hari tambahan
+    
+    uint256 public rewardThreshold = 5; // Setiap 5 petition berbayar dapat 1 token
+    uint256 public defaultTokenDuration = 7; // Token gratis berlaku untuk 7 hari
     
     mapping(uint256 => Petition) public petitions;
     mapping(address => uint256) public paidPetitionCount;
@@ -44,7 +52,9 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
         string title,
         string imageHash,
         uint256 deadline,
-        bool usedToken
+        uint256 durationDays,
+        bool usedToken,
+        uint256 feePaid
     );
     
     event PetitionSigned(
@@ -56,6 +66,12 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
     event PetitionClosed(uint256 indexed petitionId);
     
     event RewardTokenMinted(address indexed creator, uint256 amount);
+    
+    event PricingConfigUpdated(
+        uint256 baseFee,
+        uint256 baseDuration,
+        uint256 additionalDayFee
+    );
     
     constructor(address _daoMembership, address _campaignToken) Ownable(msg.sender) {
         require(_daoMembership != address(0), "Invalid DAO address");
@@ -73,14 +89,32 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Buat petition baru
+     * @dev Hitung biaya campaign berdasarkan durasi
+     * Formula: 
+     * - Durasi <= 7 hari: baseCampaignFee (0.002 ETH)
+     * - Durasi > 7 hari: baseCampaignFee + ((durasi - 7) * additionalDayFee)
+     */
+    function calculateCampaignFee(uint256 _durationInDays) public view returns (uint256) {
+        if (_durationInDays <= baseDurationDays) {
+            return baseCampaignFee;
+        }
+        
+        uint256 extraDays = _durationInDays - baseDurationDays;
+        return baseCampaignFee + (extraDays * additionalDayFee);
+    }
+    
+    /**
+     * @dev Buat petition baru dengan durasi yang bisa diatur
      * @param _title Judul petition
      * @param _description Deskripsi petition
      * @param _imageHash IPFS hash untuk gambar campaign (dari Pinata)
-     * @param _durationInDays Durasi petition dalam hari
+     * @param _durationInDays Durasi petition dalam hari (1-365)
      * 
-     * User bisa pakai Campaign Token (gratis) atau bayar dengan ETH
-     * Setiap 5 petition berbayar, user dapat 1 Campaign Token reward
+     * Cara bayar:
+     * 1. Pakai Campaign Token (gratis) - hanya untuk durasi 7 hari (default)
+     * 2. Bayar dengan ETH - bisa pilih durasi custom (pricing dinamis)
+     * 
+     * Reward: Setiap 5 petition berbayar → 1 Campaign Token
      */
     function createPetition(
         string memory _title,
@@ -92,25 +126,30 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
         require(bytes(_title).length > 0, "Title cannot be empty");
         require(bytes(_description).length > 0, "Description cannot be empty");
         require(bytes(_imageHash).length > 0, "Image hash cannot be empty");
-        require(_durationInDays > 0 && _durationInDays <= 365, "Invalid duration");
+        require(_durationInDays > 0 && _durationInDays <= 365, "Duration must be 1-365 days");
         
         bool usedToken = false;
+        uint256 feePaid = 0;
         uint256 userTokenBalance = IERC20(campaignToken).balanceOf(msg.sender);
         
-        // Check if user wants to use token or pay with ETH
-        if (userTokenBalance >= 1 * 10**18) {
-            // User has token, burn it
+        // Check if user wants to use token
+        if (userTokenBalance >= 1 * 10**18 && _durationInDays <= defaultTokenDuration) {
+            // User has token and duration is within default (7 days)
+            // Burn the token for free campaign
             (bool success, ) = campaignToken.call(
                 abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, 1 * 10**18)
             );
             require(success, "Token burn failed");
             usedToken = true;
         } else {
-            // User doesn't have token, must pay ETH
-            require(msg.value >= campaignFee, "Insufficient fee");
+            // User must pay with ETH (either no token or custom duration)
+            uint256 requiredFee = calculateCampaignFee(_durationInDays);
+            require(msg.value >= requiredFee, "Insufficient fee");
+            
+            feePaid = requiredFee;
             paidPetitionCount[msg.sender]++;
             
-            // Check if user qualifies for reward
+            // Check if user qualifies for reward token
             if (paidPetitionCount[msg.sender] % rewardThreshold == 0) {
                 (bool success, ) = campaignToken.call(
                     abi.encodeWithSignature("mint(address,uint256)", msg.sender, 1 * 10**18)
@@ -134,10 +173,20 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
             createdAt: block.timestamp,
             deadline: deadline,
             signatureCount: 0,
-            isActive: true
+            isActive: true,
+            durationDays: _durationInDays
         });
         
-        emit PetitionCreated(petitionId, msg.sender, _title, _imageHash, deadline, usedToken);
+        emit PetitionCreated(
+            petitionId, 
+            msg.sender, 
+            _title, 
+            _imageHash, 
+            deadline, 
+            _durationInDays,
+            usedToken,
+            feePaid
+        );
     }
     
     /**
@@ -200,10 +249,20 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
     }
     
     /**
-     * @dev Update campaign fee (owner only)
+     * @dev Update pricing configuration (owner only)
+     * Untuk menyesuaikan harga base dan per hari
      */
-    function setCampaignFee(uint256 _fee) external onlyOwner {
-        campaignFee = _fee;
+    function setPricingConfig(
+        uint256 _baseFee,
+        uint256 _baseDurationDays,
+        uint256 _additionalDayFee
+    ) external onlyOwner {
+        require(_baseDurationDays > 0, "Base duration must be > 0");
+        baseCampaignFee = _baseFee;
+        baseDurationDays = _baseDurationDays;
+        additionalDayFee = _additionalDayFee;
+        
+        emit PricingConfigUpdated(_baseFee, _baseDurationDays, _additionalDayFee);
     }
     
     /**
@@ -212,6 +271,14 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
     function setRewardThreshold(uint256 _threshold) external onlyOwner {
         require(_threshold > 0, "Invalid threshold");
         rewardThreshold = _threshold;
+    }
+    
+    /**
+     * @dev Update default token duration (owner only)
+     */
+    function setDefaultTokenDuration(uint256 _days) external onlyOwner {
+        require(_days > 0 && _days <= 365, "Invalid duration");
+        defaultTokenDuration = _days;
     }
     
     /**
@@ -228,5 +295,22 @@ contract PetitionPlatform is Ownable, ReentrancyGuard {
      */
     function getTotalPetitions() external view returns (uint256) {
         return petitionCounter;
+    }
+    
+    /**
+     * @dev Get pricing info untuk frontend
+     */
+    function getPricingInfo() external view returns (
+        uint256 baseFee,
+        uint256 baseDuration,
+        uint256 additionalFee,
+        uint256 tokenDuration
+    ) {
+        return (
+            baseCampaignFee,
+            baseDurationDays,
+            additionalDayFee,
+            defaultTokenDuration
+        );
     }
 }
