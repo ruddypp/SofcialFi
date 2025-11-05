@@ -1,4 +1,4 @@
-# 🗳️ DAO Petition Platform - Complete Guide
+# 🗳️ DAO Petition Platform - Complete Guide TEST
 
 Platform voting terdesentralisasi untuk petition/campaign dengan sistem reward berbasis aktivitas dan **Dynamic Duration Pricing**.
 
