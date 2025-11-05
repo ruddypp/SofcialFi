@@ -546,6 +546,11 @@
 						"internalType": "string",
 						"name": "_imageHash",
 						"type": "string"
+					},
+					{
+						"internalType": "bool",
+						"name": "_useToken",
+						"type": "bool"
 					}
 				],
 				"name": "createPetition",
@@ -1314,12 +1319,13 @@
 				"boostPetition(uint256)": {
 					"details": "Boost petition untuk naik ke urutan pertama selama 7 hari Hanya creator yang bisa boost petition sendiri Bayar 0.001 ETH + gas Sistem: Siapa cepat dia yang di urutan paling atas (boostPriority lebih tinggi = lebih atas)"
 				},
-				"createPetition(string,string,string)": {
+				"createPetition(string,string,string,bool)": {
 					"details": "Buat petition baru",
 					"params": {
 						"_description": "Deskripsi petition",
-						"_imageHash": "IPFS hash untuk gambar campaign (dari Pinata)  Cara bayar: 1. Pakai Campaign Token (gratis 1x) - burn 1 token 2. Bayar dengan ETH - baseCampaignFee + gas  Reward: Setiap 5 petition berbayar → 1 Campaign Token",
-						"_title": "Judul petition"
+						"_imageHash": "IPFS hash untuk gambar campaign",
+						"_title": "Judul petition",
+						"_useToken": "Pilihan: true (bayar pakai token), false (bayar pakai ETH) * Cara bayar: 1. Pakai Campaign Token (jika _useToken == true) - burn 1 token 2. Bayar dengan ETH (jika _useToken == false) - baseCampaignFee + gas * Reward: Setiap 5 petition berbayar -> 1 Campaign Token"
 					}
 				},
 				"getActiveBoostedPetitions()": {
@@ -1572,11 +1578,11 @@
 			]
 		},
 		"contracts/PetitionPlatform.sol": {
-			"keccak256": "0xc8db2961509825d5ce003b370db85fc8c88113dd88c5cb60e8d75b137ad23655",
+			"keccak256": "0x8e096273c4f8b8294b9fa5989c1e4bbe4fa35678c09d2dc9349b8429ca50ccbe",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://32f4e2b745a2febbab9f84cab5b11c29069c8c512d9f3396744e67e8fa540c37",
-				"dweb:/ipfs/QmQHzizFrtrjQtVzST9XJoobJd4bPv25YLQwR3tFz5wSuN"
+				"bzz-raw://6b4973c98ead92b5f18268469f3fa72a0ed87f805226c0a865276a4ec42b9204",
+				"dweb:/ipfs/QmP5gfj2AgeLLRSqvZwf61W9sduErCWp4W82bUK1tmJM4U"
 			]
 		}
 	},

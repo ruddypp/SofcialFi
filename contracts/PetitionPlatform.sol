@@ -104,10 +104,22 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
      * 
      * Reward: Setiap 5 petition berbayar → 1 Campaign Token
      */
+    /**
+     * @dev Buat petition baru
+     * @param _title Judul petition
+     * @param _description Deskripsi petition
+     * @param _imageHash IPFS hash untuk gambar campaign
+     * @param _useToken Pilihan: true (bayar pakai token), false (bayar pakai ETH)
+     * * Cara bayar:
+     * 1. Pakai Campaign Token (jika _useToken == true) - burn 1 token
+     * 2. Bayar dengan ETH (jika _useToken == false) - baseCampaignFee + gas
+     * * Reward: Setiap 5 petition berbayar -> 1 Campaign Token
+     */
     function createPetition(
         string memory _title,
         string memory _description,
-        string memory _imageHash
+        string memory _imageHash,
+        bool _useToken // <-- PARAMETER BARU DITAMBAHKAN
     ) external payable nonReentrant {
         require(isMember(msg.sender), "Not a member (need SBT)");
         require(bytes(_title).length > 0, "Title cannot be empty");
@@ -116,24 +128,31 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         
         bool usedToken = false;
         uint256 feePaid = 0;
-        uint256 userTokenBalance = IERC20(campaignToken).balanceOf(msg.sender);
         
-        // Check if user wants to use token (prioritas pertama)
-        if (userTokenBalance >= 1 * 10**18) {
-            // Burn the token for free campaign
+        // --- LOGIKA UTAMA DIRUBAH DISINI ---
+        if (_useToken) {
+            // 1. User memilih untuk menggunakan token
+            require(msg.value == 0, "Do not send ETH when using token");
+            
+            uint256 userTokenBalance = IERC20(campaignToken).balanceOf(msg.sender);
+            require(userTokenBalance >= 1 * 10**18, "Insufficient campaign tokens");
+            
+            // Burn the token (1 * 10^18)
             (bool success, ) = campaignToken.call(
                 abi.encodeWithSignature("burnFrom(address,uint256)", msg.sender, 1 * 10**18)
             );
             require(success, "Token burn failed");
+            
             usedToken = true;
+
         } else {
-            // User must pay with ETH
-            require(msg.value >= baseCampaignFee, "Insufficient fee");
+            // 2. User memilih untuk membayar dengan ETH
+            require(msg.value >= baseCampaignFee, "Insufficient ETH fee");
             
             feePaid = baseCampaignFee;
             paidPetitionCount[msg.sender]++;
             
-            // Check if user qualifies for reward token (setiap 5 petition berbayar)
+            // Check jika user berhak dapat reward token (setiap 5 petition berbayar)
             if (paidPetitionCount[msg.sender] % rewardThreshold == 0) {
                 (bool success, ) = campaignToken.call(
                     abi.encodeWithSignature("mint(address,uint256)", msg.sender, 1 * 10**18)
@@ -142,6 +161,7 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
                 emit RewardTokenMinted(msg.sender, 1 * 10**18);
             }
         }
+        // --- AKHIR DARI LOGIKA YANG DIRUBAH ---
         
         uint256 petitionId = petitionCounter;
         petitionCounter++;
@@ -163,8 +183,8 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
             msg.sender, 
             _title, 
             _imageHash, 
-            usedToken,
-            feePaid,
+            usedToken, // Akan bernilai true jika _useToken == true
+            feePaid,   // Akan bernilai baseCampaignFee jika _useToken == false
             block.timestamp
         );
     }
