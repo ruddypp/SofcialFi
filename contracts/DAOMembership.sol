@@ -17,7 +17,6 @@ interface ICampaignToken {
  */
 contract DAOMembership is ERC721, Ownable, ReentrancyGuard {
     uint256 public tokenCounter;
-    uint256 public mintPrice = 0.02 ether;
     
     ICampaignToken public campaignToken;
     address public petitionContract;
@@ -45,9 +44,8 @@ contract DAOMembership is ERC721, Ownable, ReentrancyGuard {
      * User harus bayar mintPrice dan hanya bisa mint 1x per wallet
      * Setelah mint, user dapat 1 Campaign Token gratis
      */
-    function mintMembership() external payable nonReentrant {
+    function mintMembership() external nonReentrant {
         require(!hasMinted[msg.sender], "Already minted");
-        require(msg.value >= mintPrice, "Insufficient payment");
         
         uint256 tokenId = tokenCounter;
         tokenCounter++;
@@ -59,23 +57,6 @@ contract DAOMembership is ERC721, Ownable, ReentrancyGuard {
         campaignToken.mint(msg.sender, 1 * 10**18);
         
         emit MembershipMinted(msg.sender, tokenId);
-    }
-    
-    /**
-     * @dev Update harga mint NFT
-     */
-    function setMintPrice(uint256 _price) external onlyOwner {
-        mintPrice = _price;
-        emit MintPriceUpdated(_price);
-    }
-    
-    /**
-     * @dev Withdraw ETH dari contract ke owner
-     */
-    function withdraw() external onlyOwner {
-        uint256 balance = address(this).balance;
-        require(balance > 0, "No balance to withdraw");
-        payable(owner()).transfer(balance);
     }
     
     /**

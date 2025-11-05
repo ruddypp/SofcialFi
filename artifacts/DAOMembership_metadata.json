@@ -407,20 +407,7 @@
 				"inputs": [],
 				"name": "mintMembership",
 				"outputs": [],
-				"stateMutability": "payable",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "mintPrice",
-				"outputs": [
-					{
-						"internalType": "uint256",
-						"name": "",
-						"type": "uint256"
-					}
-				],
-				"stateMutability": "view",
+				"stateMutability": "nonpayable",
 				"type": "function"
 			},
 			{
@@ -560,19 +547,6 @@
 			{
 				"inputs": [
 					{
-						"internalType": "uint256",
-						"name": "_price",
-						"type": "uint256"
-					}
-				],
-				"name": "setMintPrice",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"inputs": [
-					{
 						"internalType": "address",
 						"name": "_petitionContract",
 						"type": "address"
@@ -679,13 +653,6 @@
 					}
 				],
 				"name": "transferOwnership",
-				"outputs": [],
-				"stateMutability": "nonpayable",
-				"type": "function"
-			},
-			{
-				"inputs": [],
-				"name": "withdraw",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -829,9 +796,6 @@
 				"setApprovalForAll(address,bool)": {
 					"details": "Approve or remove `operator` as an operator for the caller. Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller. Requirements: - The `operator` cannot be the address zero. Emits an {ApprovalForAll} event."
 				},
-				"setMintPrice(uint256)": {
-					"details": "Update harga mint NFT"
-				},
 				"setPetitionContract(address)": {
 					"details": "Set address PetitionPlatform contract"
 				},
@@ -849,9 +813,6 @@
 				},
 				"transferOwnership(address)": {
 					"details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
-				},
-				"withdraw()": {
-					"details": "Withdraw ETH dari contract ke owner"
 				}
 			},
 			"title": "DAOMembership",
@@ -1008,11 +969,11 @@
 			]
 		},
 		"contracts/DAOMembership.sol": {
-			"keccak256": "0xc612b45b8614cf9d1a1ea3a310d80ad1191f1e78363f04544af76f20855190ff",
+			"keccak256": "0xa41e3e585d8fc33bf85e3319078d9c016b15a1e25a1738048c1018af67f4e464",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://c30b2ce278e5ec42f39d51ec29ae24f20c668fd95dc06a7ed21fee7e30b2b527",
-				"dweb:/ipfs/QmUA4Fj4ecgm4MpMRg2KpzBLCcQkuZ1S7kMdfgorv6GDj9"
+				"bzz-raw://7bbb79f95638cecb49391ac465d1721089632eebf4bb52a6551422827b9da035",
+				"dweb:/ipfs/QmS4g3m4jd8j3AJpJ39imQSQfeQrJcPLLspBLuQiXdP9k1"
 			]
 		}
 	},
