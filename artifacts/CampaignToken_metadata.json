@@ -168,6 +168,32 @@
 					{
 						"indexed": true,
 						"internalType": "address",
+						"name": "newContract",
+						"type": "address"
+					}
+				],
+				"name": "PetitionContractUpdated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newContract",
+						"type": "address"
+					}
+				],
+				"name": "SoulboundMemberContractUpdated",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
 						"name": "from",
 						"type": "address"
 					},
@@ -274,19 +300,6 @@
 			},
 			{
 				"inputs": [],
-				"name": "daoMembershipContract",
-				"outputs": [
-					{
-						"internalType": "address",
-						"name": "",
-						"type": "address"
-					}
-				],
-				"stateMutability": "view",
-				"type": "function"
-			},
-			{
-				"inputs": [],
 				"name": "decimals",
 				"outputs": [
 					{
@@ -366,11 +379,11 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_daoMembershipContract",
+						"name": "_petitionContract",
 						"type": "address"
 					}
 				],
-				"name": "setDAOMembershipContract",
+				"name": "setPetitionContract",
 				"outputs": [],
 				"stateMutability": "nonpayable",
 				"type": "function"
@@ -379,13 +392,26 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_petitionContract",
+						"name": "_soulboundMemberContract",
 						"type": "address"
 					}
 				],
-				"name": "setPetitionContract",
+				"name": "setSoulboundMemberContract",
 				"outputs": [],
 				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "soulboundMemberContract",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -573,7 +599,7 @@
 					"details": "Returns the number of decimals used to get its user representation. For example, if `decimals` equals `2`, a balance of `505` tokens should be displayed to a user as `5.05` (`505 / 10 ** 2`). Tokens usually opt for a value of 18, imitating the relationship between Ether and Wei. This is the default value returned by this function, unless it's overridden. NOTE: This information is only used for _display_ purposes: it in no way affects any of the arithmetic of the contract, including {IERC20-balanceOf} and {IERC20-transfer}."
 				},
 				"mint(address,uint256)": {
-					"details": "Mint token baru Hanya bisa dipanggil oleh PetitionContract, Owner, atau DAOMembership Contract"
+					"details": "Mint token baru Hanya bisa dipanggil oleh PetitionContract, Owner, atau SoulboundMember Contract"
 				},
 				"name()": {
 					"details": "Returns the name of the token."
@@ -584,11 +610,11 @@
 				"renounceOwnership()": {
 					"details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
 				},
-				"setDAOMembershipContract(address)": {
-					"details": "Set address DAOMembership contract (BARU) Diperlukan agar DAOMembership bisa memanggil mint() untuk token gratis"
-				},
 				"setPetitionContract(address)": {
-					"details": "Set address PetitionPlatform contract Hanya bisa dipanggil sekali setelah PetitionPlatform di-deploy"
+					"details": "Set address PetitionPlatform contract Hanya bisa dipanggil oleh owner setelah PetitionPlatform di-deploy"
+				},
+				"setSoulboundMemberContract(address)": {
+					"details": "Set address SoulboundMember contract Diperlukan agar SoulboundMember bisa memanggil mint() untuk token gratis"
 				},
 				"symbol()": {
 					"details": "Returns the symbol of the token, usually a shorter version of the name."
@@ -680,11 +706,11 @@
 			]
 		},
 		"contracts/CampaignToken.sol": {
-			"keccak256": "0xe8c0f6369c28ae627de754338a8df16872aed504fb7c6430aa37a1202bceb758",
+			"keccak256": "0x832861979b3767d239af0d09252856e85ab8dd2aca59d02ab14fc13a594079fd",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://952b74f25a29138ff8a506eba215d767a0e8db4780bf5acb7f2d68db340d6e34",
-				"dweb:/ipfs/QmVFsQnE8CmvXajesWiszRYs1DdB59pjYpFVJoLHr1cszk"
+				"bzz-raw://2d94b1b2fda7f0ac7527a0eca4e37973e5ae84ca6dfabfd25f11153a42f6be25",
+				"dweb:/ipfs/Qmd2EfB2b2pBVsoFWMkX3cjXVHAsUV7onYh77kryfhbQ4w"
 			]
 		}
 	},

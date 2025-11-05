@@ -9,7 +9,7 @@
 				"inputs": [
 					{
 						"internalType": "address",
-						"name": "_daoMembership",
+						"name": "_soulboundMember",
 						"type": "address"
 					},
 					{
@@ -198,19 +198,31 @@
 				"anonymous": false,
 				"inputs": [
 					{
-						"indexed": false,
+						"indexed": true,
 						"internalType": "uint256",
 						"name": "petitionId",
 						"type": "uint256"
 					},
 					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "booster",
+						"type": "address"
+					},
+					{
 						"indexed": false,
 						"internalType": "uint256",
-						"name": "boostingDuration",
+						"name": "boostEndTime",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "boostPriority",
 						"type": "uint256"
 					}
 				],
-				"name": "PetitionBossted",
+				"name": "PetitionBoosted",
 				"type": "event"
 			},
 			{
@@ -255,7 +267,7 @@
 					{
 						"indexed": false,
 						"internalType": "uint256",
-						"name": "boostingDuration",
+						"name": "createdAt",
 						"type": "uint256"
 					}
 				],
@@ -294,6 +306,12 @@
 						"indexed": false,
 						"internalType": "uint256",
 						"name": "baseFee",
+						"type": "uint256"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "boostingFee",
 						"type": "uint256"
 					}
 				],
@@ -537,12 +555,119 @@
 			},
 			{
 				"inputs": [],
-				"name": "daoMembership",
+				"name": "getActiveBoostedPetitions",
 				"outputs": [
 					{
-						"internalType": "address",
+						"components": [
+							{
+								"internalType": "uint256",
+								"name": "id",
+								"type": "uint256"
+							},
+							{
+								"internalType": "string",
+								"name": "title",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "description",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "imageHash",
+								"type": "string"
+							},
+							{
+								"internalType": "address",
+								"name": "creator",
+								"type": "address"
+							},
+							{
+								"internalType": "uint256",
+								"name": "createdAt",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "boostEndTime",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "boostPriority",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "signatureCount",
+								"type": "uint256"
+							}
+						],
+						"internalType": "struct PetitionPlatform.Petition[]",
 						"name": "",
-						"type": "address"
+						"type": "tuple[]"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "getAllPetitions",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "uint256",
+								"name": "id",
+								"type": "uint256"
+							},
+							{
+								"internalType": "string",
+								"name": "title",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "description",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "imageHash",
+								"type": "string"
+							},
+							{
+								"internalType": "address",
+								"name": "creator",
+								"type": "address"
+							},
+							{
+								"internalType": "uint256",
+								"name": "createdAt",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "boostEndTime",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "boostPriority",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "signatureCount",
+								"type": "uint256"
+							}
+						],
+						"internalType": "struct PetitionPlatform.Petition[]",
+						"name": "",
+						"type": "tuple[]"
 					}
 				],
 				"stateMutability": "view",
@@ -592,7 +717,12 @@
 							},
 							{
 								"internalType": "uint256",
-								"name": "boostingDuration",
+								"name": "boostEndTime",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "boostPriority",
 								"type": "uint256"
 							},
 							{
@@ -616,6 +746,16 @@
 					{
 						"internalType": "uint256",
 						"name": "baseFee",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "boostFee",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "rewardThresh",
 						"type": "uint256"
 					}
 				],
@@ -727,6 +867,25 @@
 				"type": "function"
 			},
 			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "_petitionId",
+						"type": "uint256"
+					}
+				],
+				"name": "isPetitionBoosted",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
 				"inputs": [],
 				"name": "owner",
 				"outputs": [
@@ -813,7 +972,12 @@
 					},
 					{
 						"internalType": "uint256",
-						"name": "boostingDuration",
+						"name": "boostEndTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "boostPriority",
 						"type": "uint256"
 					},
 					{
@@ -935,6 +1099,11 @@
 						"internalType": "uint256",
 						"name": "_baseFee",
 						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "_boostingFee",
+						"type": "uint256"
 					}
 				],
 				"name": "setPricingConfig",
@@ -966,6 +1135,19 @@
 				"name": "signPetition",
 				"outputs": [],
 				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "soulboundMember",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
 				"type": "function"
 			},
 			{
@@ -1028,7 +1210,7 @@
 			}
 		],
 		"devdoc": {
-			"details": "Core logic untuk petition voting platform - Hanya DAO member yang bisa buat petition - Petition bisa dibuat dengan Campaign Token atau bayar ETH - Siapa saja bisa sign petition (1 wallet = 1 signature) - Setiap 5 petition berbayar, creator dapat 1 Campaign Token reward - NEW: Durasi campaign bisa diatur dengan pricing dinamis",
+			"details": "Core logic untuk petition voting platform - Hanya member dengan SBT yang bisa buat dan sign petition - Petition bisa dibuat dengan Campaign Token (gratis) atau bayar ETH - Creator TIDAK BISA sign petition sendiri - Setiap wallet hanya bisa sign 1x per petition - Setiap 5 petition berbayar, creator dapat 1 Campaign Token reward - Boost system: bayar 0.001 ETH untuk naik ke urutan pertama selama 7 hari - Sistem boost: siapa cepat dia yang di urutan paling atas",
 			"errors": {
 				"ERC1155InsufficientBalance(address,uint256,uint256,uint256)": [
 					{
@@ -1129,13 +1311,22 @@
 				"balanceOfBatch(address[],uint256[])": {
 					"details": "See {IERC1155-balanceOfBatch}. Requirements: - `accounts` and `ids` must have the same length."
 				},
+				"boostPetition(uint256)": {
+					"details": "Boost petition untuk naik ke urutan pertama selama 7 hari Hanya creator yang bisa boost petition sendiri Bayar 0.001 ETH + gas Sistem: Siapa cepat dia yang di urutan paling atas (boostPriority lebih tinggi = lebih atas)"
+				},
 				"createPetition(string,string,string)": {
-					"details": "Buat petition baru dengan durasi yang bisa diatur",
+					"details": "Buat petition baru",
 					"params": {
 						"_description": "Deskripsi petition",
-						"_imageHash": "IPFS hash untuk gambar campaign (dari Pinata)  Cara bayar: 1. Pakai Campaign Token (gratis) - hanya untuk durasi 7 hari (default) 2. Bayar dengan ETH - bisa pilih durasi custom (pricing dinamis)  Reward: Setiap 5 petition berbayar → 1 Campaign Token",
+						"_imageHash": "IPFS hash untuk gambar campaign (dari Pinata)  Cara bayar: 1. Pakai Campaign Token (gratis 1x) - burn 1 token 2. Bayar dengan ETH - baseCampaignFee + gas  Reward: Setiap 5 petition berbayar → 1 Campaign Token",
 						"_title": "Judul petition"
 					}
+				},
+				"getActiveBoostedPetitions()": {
+					"details": "Get boosted petitions yang masih aktif Return petitions yang boostEndTime > block.timestamp"
+				},
+				"getAllPetitions()": {
+					"details": "Get semua petitions (untuk frontend sorting) Frontend harus sort berdasarkan: 1. Petisi dengan boostEndTime > block.timestamp (masih boosted) → sort by boostPriority DESC 2. Petisi dengan boostEndTime <= block.timestamp atau 0 → sort by createdAt ASC (urutan pembuatan)"
 				},
 				"getPetition(uint256)": {
 					"details": "Get detail petition"
@@ -1155,6 +1346,9 @@
 				"isApprovedForAll(address,address)": {
 					"details": "Returns true if `operator` is approved to transfer ``account``'s tokens. See {setApprovalForAll}."
 				},
+				"isPetitionBoosted(uint256)": {
+					"details": "Check apakah petition masih dalam status boosted"
+				},
 				"owner()": {
 					"details": "Returns the address of the current owner."
 				},
@@ -1170,14 +1364,14 @@
 				"setApprovalForAll(address,bool)": {
 					"details": "Grants or revokes permission to `operator` to transfer the caller's tokens, according to `approved`, Emits an {ApprovalForAll} event. Requirements: - `operator` cannot be the zero address."
 				},
-				"setPricingConfig(uint256)": {
-					"details": "Update pricing configuration (owner only) Untuk menyesuaikan harga base dan per hari"
+				"setPricingConfig(uint256,uint256)": {
+					"details": "Update pricing configuration (owner only)"
 				},
 				"setRewardThreshold(uint256)": {
 					"details": "Update reward threshold (owner only)"
 				},
 				"signPetition(uint256)": {
-					"details": "Sign petition (tanda tangan) Gratis dan siapa saja bisa sign 1 wallet hanya bisa sign 1x per petition"
+					"details": "Sign petition (tanda tangan) IMPORTANT: Creator TIDAK BISA sign petition sendiri 1 wallet hanya bisa sign 1x per petition"
 				},
 				"supportsInterface(bytes4)": {
 					"details": "Returns true if this contract implements the interface defined by `interfaceId`. See the corresponding https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[ERC section] to learn more about how these ids are created. This function call must use less than 30 000 gas."
@@ -1378,11 +1572,11 @@
 			]
 		},
 		"contracts/PetitionPlatform.sol": {
-			"keccak256": "0x8e99a635af6e0724e4c1c6fb817b9b12463aff9b0ba0ac43b1883b2c21289336",
+			"keccak256": "0xc8db2961509825d5ce003b370db85fc8c88113dd88c5cb60e8d75b137ad23655",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://ec0def38b73d4f6b455c7e5968825b710331369c234669400e1cfa741b2963c4",
-				"dweb:/ipfs/QmZab2orcnUhG6cA5fEqJbQNJzKiF6v8yDbFZp5RFU7t23"
+				"bzz-raw://32f4e2b745a2febbab9f84cab5b11c29069c8c512d9f3396744e67e8fa540c37",
+				"dweb:/ipfs/QmQHzizFrtrjQtVzST9XJoobJd4bPv25YLQwR3tFz5wSuN"
 			]
 		}
 	},

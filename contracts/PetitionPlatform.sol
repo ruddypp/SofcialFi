@@ -10,11 +10,13 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 /**
  * @title PetitionPlatform
  * @dev Core logic untuk petition voting platform
- * - Hanya DAO member yang bisa buat petition
- * - Petition bisa dibuat dengan Campaign Token atau bayar ETH
- * - Siapa saja bisa sign petition (1 wallet = 1 signature)
+ * - Hanya member dengan SBT yang bisa buat dan sign petition
+ * - Petition bisa dibuat dengan Campaign Token (gratis) atau bayar ETH
+ * - Creator TIDAK BISA sign petition sendiri
+ * - Setiap wallet hanya bisa sign 1x per petition
  * - Setiap 5 petition berbayar, creator dapat 1 Campaign Token reward
- * - NEW: Durasi campaign bisa diatur dengan pricing dinamis
+ * - Boost system: bayar 0.001 ETH untuk naik ke urutan pertama selama 7 hari
+ * - Sistem boost: siapa cepat dia yang di urutan paling atas
  */
 contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
     struct Petition {
@@ -24,18 +26,20 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         string imageHash;
         address creator;
         uint256 createdAt;
-        uint256 boostingDuration;
+        uint256 boostEndTime;      // Kapan boost berakhir (0 = tidak di-boost)
+        uint256 boostPriority;     // Untuk menentukan urutan boost (siapa cepat dia dapat)
         uint256 signatureCount;
     }
     
-    address public daoMembership;
+    address public soulboundMember;
     address public campaignToken;
     
     uint256 public petitionCounter;
+    uint256 private boostPriorityCounter; // Counter untuk tracking urutan boost
     
     // Pricing Configuration
     uint256 public baseCampaignFee = 0.002 ether; 
-    uint256 public boostingFee = 0.001 ether; // Fee per booster
+    uint256 public boostingFee = 0.001 ether;
     
     uint256 public rewardThreshold = 5; // Setiap 5 petition berbayar dapat 1 token
     
@@ -50,7 +54,7 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         string imageHash,
         bool usedToken,
         uint256 feePaid,
-        uint256 boostingDuration
+        uint256 createdAt
     );
     
     event PetitionSigned(
@@ -59,46 +63,44 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         uint256 newSignatureCount
     );
     
+    event PetitionBoosted(
+        uint256 indexed petitionId,
+        address indexed booster,
+        uint256 boostEndTime,
+        uint256 boostPriority
+    );
     
     event RewardTokenMinted(address indexed creator, uint256 amount);
     
     event PricingConfigUpdated(
-        uint256 baseFee
+        uint256 baseFee,
+        uint256 boostingFee
     );
-    event PetitionBossted(uint256 petitionId, uint256 boostingDuration);
     
-    constructor(address _daoMembership, address _campaignToken) ERC1155("") Ownable(msg.sender) {
-        require(_daoMembership != address(0), "Invalid DAO address");
+    constructor(address _soulboundMember, address _campaignToken) ERC1155("") Ownable(msg.sender) {
+        require(_soulboundMember != address(0), "Invalid SBT address");
         require(_campaignToken != address(0), "Invalid token address");
         
-        daoMembership = _daoMembership;
+        soulboundMember = _soulboundMember;
         campaignToken = _campaignToken;
     }
-
-    function mint(address account, uint256 id, uint256 amount, bytes memory data)
-    internal 
-        onlyOwner
-    {
-        _mint(account, id, amount, data);
-    }
     
     /**
-     * @dev Check if user is DAO member
+     * @dev Check if user is member (has SBT)
      */
     function isMember(address user) internal view returns (bool) {
-        return IERC721(daoMembership).balanceOf(user) > 0;
+        return IERC721(soulboundMember).balanceOf(user) > 0;
     }
     
-    
     /**
-     * @dev Buat petition baru dengan durasi yang bisa diatur
+     * @dev Buat petition baru
      * @param _title Judul petition
      * @param _description Deskripsi petition
      * @param _imageHash IPFS hash untuk gambar campaign (dari Pinata)
      * 
      * Cara bayar:
-     * 1. Pakai Campaign Token (gratis) - hanya untuk durasi 7 hari (default)
-     * 2. Bayar dengan ETH - bisa pilih durasi custom (pricing dinamis)
+     * 1. Pakai Campaign Token (gratis 1x) - burn 1 token
+     * 2. Bayar dengan ETH - baseCampaignFee + gas
      * 
      * Reward: Setiap 5 petition berbayar → 1 Campaign Token
      */
@@ -107,7 +109,7 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         string memory _description,
         string memory _imageHash
     ) external payable nonReentrant {
-        require(isMember(msg.sender), "Not a DAO member");
+        require(isMember(msg.sender), "Not a member (need SBT)");
         require(bytes(_title).length > 0, "Title cannot be empty");
         require(bytes(_description).length > 0, "Description cannot be empty");
         require(bytes(_imageHash).length > 0, "Image hash cannot be empty");
@@ -116,7 +118,7 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         uint256 feePaid = 0;
         uint256 userTokenBalance = IERC20(campaignToken).balanceOf(msg.sender);
         
-        // Check if user wants to use token
+        // Check if user wants to use token (prioritas pertama)
         if (userTokenBalance >= 1 * 10**18) {
             // Burn the token for free campaign
             (bool success, ) = campaignToken.call(
@@ -125,13 +127,13 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
             require(success, "Token burn failed");
             usedToken = true;
         } else {
-            // User must pay with ETH (no token)
+            // User must pay with ETH
             require(msg.value >= baseCampaignFee, "Insufficient fee");
             
             feePaid = baseCampaignFee;
             paidPetitionCount[msg.sender]++;
             
-            // Check if user qualifies for reward token
+            // Check if user qualifies for reward token (setiap 5 petition berbayar)
             if (paidPetitionCount[msg.sender] % rewardThreshold == 0) {
                 (bool success, ) = campaignToken.call(
                     abi.encodeWithSignature("mint(address,uint256)", msg.sender, 1 * 10**18)
@@ -144,7 +146,6 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         uint256 petitionId = petitionCounter;
         petitionCounter++;
         
-        
         petitions[petitionId] = Petition({
             id: petitionId,
             title: _title,
@@ -152,8 +153,9 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
             imageHash: _imageHash,
             creator: msg.sender,
             createdAt: block.timestamp,
-            signatureCount: 0,
-            boostingDuration : 0
+            boostEndTime: 0,
+            boostPriority: 0,
+            signatureCount: 0
         });
         
         emit PetitionCreated(
@@ -163,24 +165,55 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
             _imageHash, 
             usedToken,
             feePaid,
-            0
+            block.timestamp
         );
     }
     
     /**
      * @dev Sign petition (tanda tangan)
-     * Gratis dan siapa saja bisa sign
+     * IMPORTANT: Creator TIDAK BISA sign petition sendiri
      * 1 wallet hanya bisa sign 1x per petition
      */
-    function signPetition(uint256 _petitionId) external {
+    function signPetition(uint256 _petitionId) external nonReentrant {
         require(_petitionId < petitionCounter, "Petition does not exist");
+        require(isMember(msg.sender), "Not a member (need SBT)");
+        
         Petition storage petition = petitions[_petitionId];
+        
+        // CRITICAL: Creator tidak bisa sign petition sendiri
+        require(petition.creator != msg.sender, "Creator cannot sign own petition");
+        
         require(!hasSigned[_petitionId][msg.sender], "Already signed");
         
-        hasSigned[_petitionId][msg.sender] = true; // 
+        hasSigned[_petitionId][msg.sender] = true;
         petition.signatureCount++;
-        mint(msg.sender, _petitionId, 1, "" );
+        
+        // Mint ERC-1155 token sebagai bukti signature
+        _mint(msg.sender, _petitionId, 1, "");
+        
         emit PetitionSigned(_petitionId, msg.sender, petition.signatureCount);
+    }
+    
+    /**
+     * @dev Boost petition untuk naik ke urutan pertama selama 7 hari
+     * Hanya creator yang bisa boost petition sendiri
+     * Bayar 0.001 ETH + gas
+     * Sistem: Siapa cepat dia yang di urutan paling atas (boostPriority lebih tinggi = lebih atas)
+     */
+    function boostPetition(uint256 _petitionId) external payable nonReentrant {
+        require(_petitionId < petitionCounter, "Petition does not exist");
+        require(msg.value >= boostingFee, "Insufficient fee");
+        require(isMember(msg.sender), "Not a member (need SBT)");
+        
+        Petition storage petition = petitions[_petitionId];
+        require(petition.creator == msg.sender, "Only creator can boost");
+        
+        // Update boost info
+        petition.boostEndTime = block.timestamp + 7 days;
+        boostPriorityCounter++; // Increment untuk sistem "siapa cepat dia dapat"
+        petition.boostPriority = boostPriorityCounter;
+        
+        emit PetitionBoosted(_petitionId, msg.sender, petition.boostEndTime, petition.boostPriority);
     }
     
     /**
@@ -189,6 +222,55 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
     function getPetition(uint256 _petitionId) external view returns (Petition memory) {
         require(_petitionId < petitionCounter, "Petition does not exist");
         return petitions[_petitionId];
+    }
+    
+    /**
+     * @dev Get semua petitions (untuk frontend sorting)
+     * Frontend harus sort berdasarkan:
+     * 1. Petisi dengan boostEndTime > block.timestamp (masih boosted) → sort by boostPriority DESC
+     * 2. Petisi dengan boostEndTime <= block.timestamp atau 0 → sort by createdAt ASC (urutan pembuatan)
+     */
+    function getAllPetitions() external view returns (Petition[] memory) {
+        Petition[] memory allPetitions = new Petition[](petitionCounter);
+        for (uint256 i = 0; i < petitionCounter; i++) {
+            allPetitions[i] = petitions[i];
+        }
+        return allPetitions;
+    }
+    
+    /**
+     * @dev Get boosted petitions yang masih aktif
+     * Return petitions yang boostEndTime > block.timestamp
+     */
+    function getActiveBoostedPetitions() external view returns (Petition[] memory) {
+        // Count active boosted petitions
+        uint256 count = 0;
+        for (uint256 i = 0; i < petitionCounter; i++) {
+            if (petitions[i].boostEndTime > block.timestamp) {
+                count++;
+            }
+        }
+        
+        // Create array with exact size
+        Petition[] memory boosted = new Petition[](count);
+        uint256 index = 0;
+        
+        for (uint256 i = 0; i < petitionCounter; i++) {
+            if (petitions[i].boostEndTime > block.timestamp) {
+                boosted[index] = petitions[i];
+                index++;
+            }
+        }
+        
+        return boosted;
+    }
+    
+    /**
+     * @dev Check apakah petition masih dalam status boosted
+     */
+    function isPetitionBoosted(uint256 _petitionId) external view returns (bool) {
+        require(_petitionId < petitionCounter, "Petition does not exist");
+        return petitions[_petitionId].boostEndTime > block.timestamp;
     }
     
     /**
@@ -207,14 +289,15 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
     
     /**
      * @dev Update pricing configuration (owner only)
-     * Untuk menyesuaikan harga base dan per hari
      */
     function setPricingConfig(
-        uint256 _baseFee
+        uint256 _baseFee,
+        uint256 _boostingFee
     ) external onlyOwner {
         baseCampaignFee = _baseFee;
+        boostingFee = _boostingFee;
         
-        emit PricingConfigUpdated(_baseFee);
+        emit PricingConfigUpdated(_baseFee, _boostingFee);
     }
     
     /**
@@ -224,7 +307,6 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
         require(_threshold > 0, "Invalid threshold");
         rewardThreshold = _threshold;
     }
-    
     
     /**
      * @dev Withdraw ETH dari contract ke owner
@@ -246,25 +328,14 @@ contract PetitionPlatform is Ownable, ERC1155, ReentrancyGuard {
      * @dev Get pricing info untuk frontend
      */
     function getPricingInfo() external view returns (
-        uint256 baseFee
+        uint256 baseFee,
+        uint256 boostFee,
+        uint256 rewardThresh
     ) {
         return (
-            baseCampaignFee
+            baseCampaignFee,
+            boostingFee,
+            rewardThreshold
         );
     }
-
-function boostPetition(uint256 _petitionId) external payable nonReentrant {
-    require(_petitionId < petitionCounter, "Petition does not exist");
-    require(msg.value >= boostingFee, "Insufficient fee");
-    require(isMember(msg.sender), "Not a DAO member");
-
-    Petition storage petition = petitions[_petitionId];
-    require(petition.creator == msg.sender, "Only creator can boost");
-
-    // Tambah durasi campaign
-    petition.boostingDuration = block.timestamp + 7 days;
-
-    emit PetitionBossted(_petitionId, petition.boostingDuration);
-}
-
 }

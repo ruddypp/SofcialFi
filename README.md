@@ -1,1118 +1,2439 @@
-# 🗳️ DAO Petition Platform - Complete Guide
+# Platform Petisi Digital Web3 - Deployment & Integration Guide
 
-Platform voting terdesentralisasi untuk petition/campaign dengan sistem reward berbasis aktivitas dan **Dynamic Duration Pricing**.
-
----
-
-## 📋 Table of Contents
-1. [Konsep Platform](#konsep-platform)
-2. [Setup di Remix](#setup-di-remix)
-3. [Deployment Step-by-Step](#deployment-step-by-step)
-4. [Testing Scenarios](#testing-scenarios)
-5. [FAQ & Troubleshooting](#faq--troubleshooting)
-
----
-
-## 🎯 Konsep Platform
-
-### Alur Pengguna:
-1. **User Biasa (Public)**: Bisa sign petition gratis, 1 wallet = 1 signature
-2. **DAO Member**: 
-   - Mint NFT (0.02 ETH) → dapat 1 Campaign Token gratis
-   - Bisa buat petition dengan **gambar (IPFS hash)** menggunakan:
-     - Campaign Token (gratis, max 7 hari) ATAU
-     - Bayar ETH dengan **pricing dinamis** berdasarkan durasi
-   - Setiap 5 petition berbayar → dapat 1 Campaign Token reward
-
-### 🆕 Dynamic Duration Pricing
-
-**Konsep**: Semakin lama durasi campaign, semakin tinggi biayanya!
-
-**Pricing Formula**:
-- **7 hari atau kurang**: 0.002 ETH (base price)
-- **Lebih dari 7 hari**: 0.002 ETH + (jumlah hari tambahan × 0.0003 ETH)
-
-**Contoh Pricing**:
-| Durasi | Perhitungan | Total Biaya |
-|--------|-------------|-------------|
-| 3 hari | Base price | 0.002 ETH |
-| 7 hari | Base price | 0.002 ETH |
-| 10 hari | 0.002 + (3 × 0.0003) | 0.0029 ETH |
-| 14 hari | 0.002 + (7 × 0.0003) | 0.0041 ETH |
-| 30 hari | 0.002 + (23 × 0.0003) | 0.0089 ETH |
-| 60 hari | 0.002 + (53 × 0.0003) | 0.0179 ETH |
-| 90 hari | 0.002 + (83 × 0.0003) | 0.0269 ETH |
-
-**Campaign Token Rules**:
-- ✅ Token gratis **hanya untuk durasi 7 hari**
-- ❌ Jika pilih durasi > 7 hari, **wajib bayar ETH** (token tidak bisa dipakai)
-- 🎁 Reward token tetap: setiap 5 petition berbayar = 1 token gratis
-
-### Smart Contracts:
-- **CampaignToken.sol**: ERC-20 token untuk bikin petition gratis
-- **DAOMembership.sol**: ERC-721 NFT membership
-- **PetitionPlatform.sol**: Core logic voting & petition (dengan dynamic pricing)
+## Daftar Isi
+1. [Arsitektur Sistem](#arsitektur-sistem)
+2. [Persiapan Environment](#persiapan-environment)
+3. [Deployment dengan Remix](#deployment-dengan-remix)
+4. [Deployment dengan Hardhat](#deployment-dengan-hardhat)
+5. [Testing Contract Functions](#testing-contract-functions)
+6. [Integrasi Frontend](#integrasi-frontend)
+7. [Integrasi Backend](#integrasi-backend)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🛠️ Setup di Remix
+## Arsitektur Sistem
 
-### 1. Buka Remix IDE
-- Kunjungi: https://remix.ethereum.org
-- Pastikan compiler version: **0.8.30**
+### Komponen Utama
 
-### 2. Buat 3 File Baru
+**1. SoulboundMember (ERC-721)**
+- Token identitas non-transferable
+- Satu wallet hanya bisa mint satu kali
+- Memberikan 1 CampaignToken gratis saat mint
 
-**File 1: `CampaignToken.sol`**
-```
-contracts/
-└── CampaignToken.sol
-```
-Copy paste code dari artifact CampaignToken.sol
+**2. CampaignToken (ERC-20)**
+- Token untuk membuat petisi gratis
+- Diberikan sebagai reward setiap 5 petisi berbayar
+- Dapat di-burn untuk membuat 1 petisi gratis
 
-**File 2: `DAOMembership.sol`**
-```
-contracts/
-└── DAOMembership.sol
-```
-Copy paste code dari artifact DAOMembership.sol
+**3. PetitionPlatform (ERC-1155)**
+- Core logic platform petisi
+- Mengelola pembuatan dan penandatanganan petisi
+- Sistem boost dengan priority-based ordering
 
-**File 3: `PetitionPlatform.sol`**
-```
-contracts/
-└── PetitionPlatform.sol
-```
-Copy paste code **BARU** PetitionPlatform.sol (yang sudah ada dynamic pricing)
-
-### 3. Compile Contracts
-
-1. Klik tab **"Solidity Compiler"** (icon logo Solidity)
-2. Pilih compiler version: **0.8.30**
-3. Enable **"Auto compile"** atau klik **"Compile"** manual untuk setiap file
-4. Pastikan tidak ada error (hijau centang ✅)
-
----
-
-## 🚀 Deployment Step-by-Step
-
-### Persiapan
-- Network: **Remix VM (Cancun)** untuk testing (atau network lain seperti Sepolia)
-- Pastikan punya ETH di wallet untuk deploy
-
----
-
-### STEP 1: Deploy CampaignToken
-
-1. Buka tab **"Deploy & Run Transactions"**
-2. Pilih **Contract**: `CampaignToken`
-3. Klik **"Deploy"** (tidak perlu parameter)
-4. ✅ **PENTING**: Copy address contract yang baru di-deploy
-   ```
-   Contoh: 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
-   ```
-
-**Simpan address ini! Akan digunakan di step berikutnya.**
-
----
-
-### STEP 2: Deploy DAOMembership
-
-1. Pilih **Contract**: `DAOMembership`
-2. Di field constructor, input **address CampaignToken** dari Step 1
-   ```
-   Contoh input:
-   _campaignToken: 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
-   ```
-3. Klik **"Deploy"**
-4. ✅ **PENTING**: Copy address DAOMembership yang baru di-deploy
-   ```
-   Contoh: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-   ```
-
-**Simpan address ini! Akan digunakan di step berikutnya.**
-
----
-
-### STEP 3: Deploy PetitionPlatform
-
-1. Pilih **Contract**: `PetitionPlatform`
-2. Di field constructor, input **2 address**:
-   ```
-   _daoMembership: [address DAOMembership dari Step 2]
-   _campaignToken: [address CampaignToken dari Step 1]
-   
-   Contoh:
-   _daoMembership: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-   _campaignToken: 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
-   ```
-3. Klik **"Deploy"**
-4. ✅ **PENTING**: Copy address PetitionPlatform
-   ```
-   Contoh: 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-   ```
-
----
-
-### STEP 4: Setup Connections (WAJIB!)
-
-Sekarang 3 contract sudah di-deploy, tapi belum terhubung. Kita perlu setup connections.
-
-#### 4A. Setup CampaignToken - Petition Connection
-
-1. Klik contract **CampaignToken** di "Deployed Contracts"
-2. Cari function **`setPetitionContract`**
-3. Input address **PetitionPlatform** dari Step 3
-   ```
-   _petitionContract: 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-   ```
-4. Klik **"transact"**
-5. ✅ Tunggu sampai transaction success
-
-#### 4B. Setup CampaignToken - DAO Connection
-
-⚠️ **Langkah ini WAJIB** untuk mengatasi error "Not authorized" saat mintMembership!
-
-1. Klik contract **CampaignToken** di "Deployed Contracts"
-2. Cari function **`setDAOMembershipContract`**
-3. Input address **DAOMembership** dari Step 2
-   ```
-   _daoMembershipContract: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-   ```
-4. Klik **"transact"**
-5. ✅ Tunggu sampai transaction success
-
-#### 4C. Setup DAOMembership
-
-1. Klik contract **DAOMembership** di "Deployed Contracts"
-2. Cari function **`setPetitionContract`**
-3. Input address **PetitionPlatform** dari Step 3
-   ```
-   _petitionContract: 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-   ```
-4. Klik **"transact"**
-5. ✅ Tunggu sampai transaction success
-
----
-
-### ✅ Deployment Complete!
-
-Sekarang platform sudah siap digunakan. Mari kita test!
-
----
-
-## 🧪 Testing Scenarios
-
-### Persiapan Testing
-
-**Buat 3 Account untuk Testing:**
-- **Account 1**: Owner/Platform (default account di Remix)
-- **Account 2**: Creator pertama (ganti account di dropdown)
-- **Account 3**: Public user (untuk sign petition)
-
-**Cara ganti account di Remix:**
-- Di tab "Deploy & Run", lihat dropdown **"Account"**
-- Pilih account yang berbeda untuk simulasi user berbeda
-
----
-
-## TEST 1: Mint NFT Membership (Jadi Creator)
-
-**Menggunakan Account 2** (bukan owner)
-
-1. Ganti account ke **Account 2** di dropdown
-2. Buka contract **DAOMembership**
-3. Cari function **`mintMembership`**
-4. **Set VALUE**: `0.02` Ether (di kolom VALUE, ubah unit ke "Ether")
-5. Klik **"transact"**
-6. ✅ Tunggu transaction success
-
-**Verifikasi:**
-- Cek function **`hasMinted`** → input address Account 2 → harus return `true`
-- Cek function **`balanceOf`** → input address Account 2 → harus return `1`
-- Cek function **`tokenCounter`** → harus return `1`
-
-**Cek Campaign Token:**
-1. Buka contract **CampaignToken**
-2. Cari function **`balanceOf`**
-3. Input address Account 2
-4. ✅ Harus return: `1000000000000000000` (1 token dengan 18 decimals = 1 token gratis!)
-
----
-
-## TEST 2: Cek Pricing Configuration
-
-**Menggunakan Account 2 atau Account manapun**
-
-Sebelum buat petition, mari cek pricing configuration terlebih dahulu.
-
-1. Buka contract **PetitionPlatform**
-2. Cari function **`getPricingInfo`**
-3. Klik **"call"** (read-only, gratis)
-4. ✅ Output:
-   ```
-   baseFee: 2000000000000000 (0.002 ETH)
-   baseDuration: 7 (hari)
-   additionalFee: 300000000000000 (0.0003 ETH per hari)
-   tokenDuration: 7 (hari default untuk token gratis)
-   ```
-
-**Test Calculate Fee untuk berbagai durasi:**
-
-1. Cari function **`calculateCampaignFee`**
-2. Test berbagai durasi:
-   
-   **Durasi 7 hari:**
-   ```
-   Input: 7
-   Output: 2000000000000000 (0.002 ETH)
-   ```
-   
-   **Durasi 10 hari:**
-   ```
-   Input: 10
-   Output: 2900000000000000 (0.0029 ETH)
-   Perhitungan: 0.002 + (3 × 0.0003)
-   ```
-   
-   **Durasi 30 hari:**
-   ```
-   Input: 30
-   Output: 8900000000000000 (0.0089 ETH)
-   Perhitungan: 0.002 + (23 × 0.0003)
-   ```
-
----
-
-## TEST 3: Buat Petition dengan Token Gratis (7 Hari)
-
-**Menggunakan Account 2** (yang sudah punya NFT + 1 token)
-
-### Persiapan IPFS Hash:
-
-Gunakan hash ini untuk testing:
-```
-QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
-```
-
-### Create Petition:
-
-1. Pastikan masih pakai **Account 2**
-2. Buka contract **PetitionPlatform**
-3. Cari function **`createPetition`**
-4. Input parameter:
-   ```
-   _title: "Stop Deforestation"
-   _description: "We need to protect our forests for future generations"
-   _imageHash: "QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3"
-   _durationInDays: 7
-   ```
-5. **VALUE: 0** (karena pakai token gratis dan durasi ≤ 7 hari)
-6. Klik **"transact"**
-7. ✅ Tunggu transaction success
-
-**Verifikasi:**
-- Cek **`petitionCounter`** → harus return `1`
-- Cek **`getPetition`** → input `0` → lihat:
-  - `durationDays`: 7
-  - `imageHash`: QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
-- Buka **CampaignToken** → cek `balanceOf` Account 2 → harus `0` (token sudah di-burn)
-- Cek **Events** di transaction → lihat event `PetitionCreated`:
-  - `usedToken`: true
-  - `feePaid`: 0
-
----
-
-## TEST 4: ❌ Test Token dengan Durasi > 7 Hari (Harus Gagal)
-
-**Menggunakan Account 2**
-
-Sekarang kita test case dimana user punya token tapi pilih durasi > 7 hari.
-
-1. Mint NFT lagi dengan **Account yang berbeda** (misal Account 3) untuk dapat 1 token baru
-2. Ganti ke Account 3
-3. **Mint Membership** (0.02 ETH) → dapat 1 token
-4. Coba buat petition dengan token tapi durasi 14 hari:
-   ```
-   _title: "Free Education"
-   _description: "Education for all"
-   _imageHash: "QmT4AeNYvPZRfRxDfz8tYvJxNqw1N3Kj7s9X2pLmH5vQaB"
-   _durationInDays: 14
-   VALUE: 0
-   ```
-5. ❌ **Harus GAGAL** dengan error: **"Insufficient fee"**
-
-**Penjelasan**: Token gratis hanya untuk durasi ≤ 7 hari. Untuk durasi lebih lama, wajib bayar ETH!
-
----
-
-## TEST 5: Buat Petition dengan Durasi Custom (Bayar ETH)
-
-**Menggunakan Account 3** (masih punya 1 token, tapi tidak dipakai)
-
-### Test A: Durasi 14 Hari
-
-1. Hitung fee dulu: `calculateCampaignFee(14)` → `0.0041` ETH
-2. Buat petition:
-   ```
-   _title: "Free Education for All"
-   _description: "Education is a human right"
-   _imageHash: "QmT4AeNYvPZRfRxDfz8tYvJxNqw1N3Kj7s9X2pLmH5vQaB"
-   _durationInDays: 14
-   ```
-3. **Set VALUE**: `0.0041` Ether
-4. Klik **"transact"**
-5. ✅ Success!
-
-**Verifikasi:**
-- Cek **`getPetition`** → input petition ID → lihat `durationDays`: 14
-- Cek **`paidPetitionCount`** → input address Account 3 → harus `1`
-- Cek **CampaignToken** `balanceOf` Account 3 → masih `1` (token tidak dipakai)
-- Cek **Events** → `usedToken`: false, `feePaid`: 4100000000000000 (0.0041 ETH)
-
-### Test B: Durasi 30 Hari
-
-1. Hitung fee: `calculateCampaignFee(30)` → `0.0089` ETH
-2. Buat petition:
-   ```
-   _title: "Clean Water Initiative"
-   _description: "Access to clean water for rural communities"
-   _imageHash: "QmP7RdKvY3sN8tHwJxQzVmL9pFgB5rC4aE6nX2mW1sT9qD"
-   _durationInDays: 30
-   ```
-3. **Set VALUE**: `0.0089` Ether
-4. ✅ Success!
-
-**Verifikasi:**
-- `durationDays`: 30
-- `paidPetitionCount` Account 3: 2
-- Token balance: masih 1 (tidak terpakai)
-
-### Test C: Durasi 60 Hari
-
-1. Hitung fee: `calculateCampaignFee(60)` → `0.0179` ETH
-2. Buat petition:
-   ```
-   _title: "Renewable Energy Now"
-   _description: "Transition to sustainable energy"
-   _imageHash: "QmZ9XvLmK4tP2jNwRyHqC5sB8aD7fG3nM6xW1pE9rV4qT"
-   _durationInDays: 60
-   ```
-3. **Set VALUE**: `0.0179` Ether
-4. ✅ Success!
-
-**Verifikasi:**
-- `durationDays`: 60
-- `paidPetitionCount` Account 3: 3
-
----
-
-## TEST 6: Sign Petition (Public User)
-
-**Menggunakan Account 1** (user biasa, tidak perlu NFT)
-
-1. Ganti account ke **Account 1**
-2. Buka contract **PetitionPlatform**
-3. Cari function **`signPetition`**
-4. Input: `0` (petition ID pertama)
-5. **VALUE: 0** (sign petition GRATIS!)
-6. Klik **"transact"**
-7. ✅ Tunggu transaction success
-
-**Verifikasi:**
-- Cek **`hasUserSigned`** → input petitionId `0` dan address Account 1 → harus `true`
-- Cek **`getPetition`** → input `0` → lihat `signatureCount` → harus `1`
-
-**Test Multiple Sign:**
-1. Ganti ke **Account 2**
-2. Sign petition ID `0`
-3. Verifikasi `signatureCount` → harus jadi `2`
-
-**Test Sign Duplicate (harus gagal):**
-1. Tetap pakai **Account 2**
-2. Coba sign petition ID `0` lagi
-3. ❌ Harus error: "Already signed"
-
----
-
-## TEST 7: Reward System (5 Petition Berbayar)
-
-**Menggunakan Account 3** (sudah punya 3 paid petitions)
-
-Buat 2 petition lagi dengan durasi custom untuk mencapai 5 petitions:
-
-**Petition 4 (Durasi 10 hari):**
-```
-_title: "Animal Rights Protection"
-_description: "Stronger laws for animal welfare"
-_imageHash: "QmK3LnR8pW7sT5jC2fN9xD4vM6aB1qE8hY7zP3mX9rG5wL"
-_durationInDays: 10
-VALUE: 0.0029 Ether
-```
-
-**Petition 5 (Durasi 7 hari - dapat reward!):**
-```
-_title: "Digital Privacy Rights"
-_description: "Protect user data and privacy"
-_imageHash: "QmF8VwT2pL9kN6sR4jH3xC7mD5aB1qE9vY8zP2nX7rG4wK"
-_durationInDays: 7
-VALUE: 0.002 Ether
-```
-
-**Verifikasi Reward:**
-1. Cek **`paidPetitionCount`** → input address Account 3 → harus `5`
-2. Buka **CampaignToken**
-3. Cek **`balanceOf`** → input address Account 3 → harus `2000000000000000000` (2 token!)
-   - 1 token dari awal (mint NFT)
-   - 1 token reward (5 paid petitions)
-4. Cek **Events** di transaction terakhir → harus ada `RewardTokenMinted`
-
----
-
-## TEST 8: Pakai Token Reward untuk Petition 7 Hari
-
-**Menggunakan Account 3** (punya 2 tokens)
-
-1. Buat petition dengan token (durasi 7 hari):
-   ```
-   _title: "Ocean Cleanup Initiative"
-   _description: "Remove plastic from our oceans"
-   _imageHash: "QmL9PwT5jK2nR8sC4fH7xD6vM9aB3qE1hY8zP5mX2rG7wN"
-   _durationInDays: 7
-   VALUE: 0 (pakai token!)
-   ```
-2. ✅ Success!
-
-**Verifikasi:**
-- Token balance Account 3: `1000000000000000000` (1 token tersisa)
-- Petition created dengan `usedToken`: true
-
----
-
-## TEST 9: ❌ Test Insufficient Payment (Harus Gagal)
-
-**Menggunakan Account 2**
-
-Coba bayar kurang dari required fee:
-
-1. Buat petition durasi 30 hari
-2. Required fee: `0.0089` ETH
-3. Tapi bayar hanya: `0.005` ETH
-4. ❌ **Harus error**: "Insufficient fee"
-
----
-
-## TEST 10: Update Pricing Config (Owner Only)
-
-**Menggunakan Account 1** (owner)
-
-Test ubah pricing configuration:
-
-1. Ganti ke **Account 1** (owner/deployer)
-2. Buka contract **PetitionPlatform**
-3. Cari function **`setPricingConfig`**
-4. Input parameter:
-   ```
-   _baseFee: 3000000000000000 (0.003 ETH)
-   _baseDurationDays: 7
-   _additionalDayFee: 400000000000000 (0.0004 ETH)
-   ```
-5. Klik **"transact"**
-6. ✅ Success!
-
-**Verifikasi:**
-- Cek **`getPricingInfo`** → harus show nilai baru
-- Test **`calculateCampaignFee(10)`** → harus `0.0042` ETH (0.003 + 3×0.0004)
-
-**Test dengan Non-Owner (Harus Gagal):**
-1. Ganti ke **Account 2**
-2. Coba panggil `setPricingConfig`
-3. ❌ Harus error: "OwnableUnauthorizedAccount"
-
----
-
-## TEST 11: Close Petition
-
-**Menggunakan Account 2** (creator)
-
-1. Cari function **`closePetition`**
-2. Input: `0` (petition ID)
-3. Klik **"transact"**
-
-**Verifikasi:**
-- Cek **`getPetition`** → input `0` → `isActive`: false
-
-**Test Sign Closed Petition (harus gagal):**
-1. Ganti ke **Account 1**
-2. Coba sign petition ID `0`
-3. ❌ Harus error: "Petition is not active"
-
----
-
-## TEST 12: Withdraw Platform Fee (Owner Only)
-
-**Menggunakan Account 1** (owner)
-
-1. Ganti account ke **Account 1** (owner)
-2. Buka contract **PetitionPlatform**
-3. Cari function **`withdraw`**
-4. Klik **"transact"**
-5. ✅ ETH dari campaign fee akan masuk ke wallet owner
-
-**Verifikasi:**
-- Cek balance Account 1 → harus bertambah
-- Total fee terkumpul dari semua paid petitions
-
----
-
-## 📊 Testing Checklist
-
-### Basic Functions:
-- ✅ Mint NFT → dapat 1 token gratis
-- ✅ Cek pricing info (`getPricingInfo`)
-- ✅ Calculate fee untuk berbagai durasi (`calculateCampaignFee`)
-
-### Dynamic Pricing Features:
-- ✅ Buat petition dengan token gratis (durasi 7 hari)
-- ✅ Buat petition durasi 7 hari dengan ETH (0.002 ETH)
-- ✅ Buat petition durasi 10 hari (0.0029 ETH)
-- ✅ Buat petition durasi 14 hari (0.0041 ETH)
-- ✅ Buat petition durasi 30 hari (0.0089 ETH)
-- ✅ Buat petition durasi 60 hari (0.0179 ETH)
-- ✅ Test token dengan durasi > 7 hari → error
-- ✅ Test insufficient payment → error
-
-### Signing & Voting:
-- ✅ Sign petition (1 wallet = 1 sign)
-- ✅ Sign duplicate → error
-- ✅ Sign closed petition → error
-
-### IPFS Integration:
-- ✅ Store IPFS hash di petition
-- ✅ Retrieve image hash via `getPetition`
-- ✅ View image via IPFS gateway
-
-### Reward System:
-- ✅ Setelah 5 petition berbayar → dapat 1 token reward
-- ✅ Pakai token reward untuk petition 7 hari gratis
-- ✅ Token tidak bisa dipakai untuk durasi > 7 hari
-
-### Access Control & Admin:
-- ✅ Non-member tidak bisa buat petition
-- ✅ Hanya creator/owner bisa close petition
-- ✅ Hanya owner bisa update pricing config
-- ✅ Hanya owner bisa update reward threshold
-- ✅ Hanya owner bisa withdraw fee
-
----
-
-## 🖼️ IPFS Integration Guide
-
-### Apa itu IPFS?
-
-**IPFS (InterPlanetary File System)** adalah storage terdesentralisasi untuk menyimpan file (gambar, video, dokumen).
-
-**Kenapa pakai IPFS?**
-- ✅ Decentralized (tidak ada single point of failure)
-- ✅ Permanent storage (file tidak hilang)
-- ✅ Murah gas (hanya simpan hash, bukan file)
-- ✅ Industry standard untuk Web3
-
-### Upload Gambar ke Pinata (Manual)
-
-**Step 1: Daftar Pinata**
-1. Kunjungi: https://pinata.cloud
-2. Sign up (gratis 1GB storage)
-3. Verify email
-
-**Step 2: Upload File**
-1. Login ke Dashboard
-2. Klik **"Upload"** → **"File"**
-3. Pilih gambar campaign (PNG/JPG, max 100MB)
-4. Klik **"Upload"**
-
-**Step 3: Get IPFS Hash**
-1. Setelah upload, lihat list files
-2. Copy **CID** (Content Identifier)
-   ```
-   Contoh: QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
-   ```
-3. Hash ini yang digunakan di smart contract!
-
-**Step 4: Verify Image**
-- Buka: `https://ipfs.io/ipfs/[YOUR_HASH]`
-- Atau: `https://gateway.pinata.cloud/ipfs/[YOUR_HASH]`
-- Gambar harus muncul
-
-### IPFS Hash untuk Testing
-
-Gunakan hash ini untuk testing tanpa upload manual:
+### Alur Kerja Sistem
 
 ```
-QmYwAPJzv5CZsnAzt8auVZRn5rcYRZHA3dGmXYvNrQ6hE3
-QmT4AeNYvPZRfRxDfz8tYvJxNqw1N3Kj7s9X2pLmH5vQaB
-QmP7RdKvY3sN8tHwJxQzVmL9pFgB5rC4aE6nX2mW1sT9qD
-QmZ9XvLmK4tP2jNwRyHqC5sB8aD7fG3nM6xW1pE9rV4qT
-QmK3LnR8pW7sT5jC2fN9xD4vM6aB1qE8hY7zP3mX9rG5wL
+User Register (Mint SBT)
+    ↓
+Dapat 1 CampaignToken Gratis
+    ↓
+Buat Petisi (Gratis dengan Token ATAU Bayar 0.002 ETH)
+    ↓
+User Lain Tanda Tangan Petisi (Creator tidak bisa TTD petisi sendiri)
+    ↓
+Creator Boost Petisi (Bayar 0.001 ETH untuk 7 hari)
 ```
 
 ---
 
-## 🔧 FAQ & Troubleshooting
+## Persiapan Environment
 
-### Q: Bagaimana cara hitung biaya untuk durasi tertentu?
-**A:** 
-- Gunakan function `calculateCampaignFee(durasi)`
-- Formula: durasi ≤ 7 hari = 0.002 ETH, lebih dari 7 = 0.002 + ((durasi-7) × 0.0003) ETH
-- Contoh: 20 hari = 0.002 + (13 × 0.0003) = 0.0059 ETH
+### Requirements
 
-### Q: Kenapa token gratis tidak bisa dipakai untuk durasi 14 hari?
-**A:** Token gratis HANYA untuk durasi default (7 hari). Jika mau durasi lebih lama, wajib bayar ETH dengan pricing dinamis.
-
-### Q: Apakah reward token juga berlaku untuk durasi 7 hari saja?
-**A:** Ya! Reward token (dari 5 paid petitions) juga hanya bisa dipakai untuk petition 7 hari. Untuk durasi lebih lama, tetap bayar ETH.
-
-### Q: Berapa maksimal durasi petition?
-**A:** Maksimal 365 hari (1 tahun). Minimum 1 hari.
-
-### Q: Bisakah pricing diubah setelah deploy?
-**A:** Ya! Owner bisa update pricing config dengan function `setPricingConfig()`. Perubahan berlaku untuk petition yang dibuat setelahnya.
-
-### Q: "Insufficient fee" error saat buat petition
-**A:** 
-- Cek dulu required fee dengan `calculateCampaignFee(durationInDays)`
-- Pastikan VALUE yang dikirim >= required fee
-- Contoh: durasi 30 hari butuh 0.0089 ETH, tapi kirim cuma 0.005 ETH → error
-- Jika punya token tapi durasi > 7 hari → wajib bayar ETH
-
-### Q: Saya punya token tapi tetap kena charge ETH?
-**A:** Periksa durasi yang dipilih:
-- Durasi ≤ 7 hari + punya token = gratis (token di-burn)
-- Durasi > 7 hari meskipun punya token = bayar ETH (token tidak dipakai)
-
-### Q: "Not authorized" error saat mint token
-**A:** Pastikan sudah setup connections:
-1. `CampaignToken.setPetitionContract(address PetitionPlatform)`
-2. `CampaignToken.setDAOMembershipContract(address DAOMembership)` ← PENTING!
-3. `DAOMembership.setPetitionContract(address PetitionPlatform)`
-
-### Q: "Not a DAO member" saat buat petition
-**A:** Harus mint NFT dulu menggunakan `mintMembership()` dengan 0.02 ETH
-
-### Q: "Already signed" error
-**A:** 1 wallet hanya bisa sign 1x per petition. Pakai wallet lain untuk test.
-
-### Q: Token reward tidak masuk setelah 5 petitions
-**A:** 
-- Reward hanya untuk petition BERBAYAR (pakai ETH, bukan token)
-- Cek `paidPetitionCount[address]` → harus kelipatan 5
-- Petition dengan token gratis TIDAK dihitung sebagai paid petition
-
-### Q: Bagaimana cara cek berapa petition lagi sampai dapat reward?
-**A:** 
-```
-paidPetitionCount[address] % 5 = sisa petition
-Contoh:
-- paidPetitionCount = 3 → butuh 2 lagi
-- paidPetitionCount = 4 → butuh 1 lagi  
-- paidPetitionCount = 5 → dapat reward!
-- paidPetitionCount = 8 → butuh 2 lagi untuk reward ke-2
+**Node.js & Package Manager**
+```bash
+node --version  # v16.x atau lebih tinggi
+npm --version   # v8.x atau lebih tinggi
 ```
 
-### Q: IPFS hash tidak valid?
-**A:** 
-- Hash harus format: `Qm...` (46-59 karakter)
-- Verify hash di: `https://ipfs.io/ipfs/[YOUR_HASH]`
-- Pastikan file sudah ter-upload di Pinata
+**Hardhat (untuk deployment via script)**
+```bash
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+```
 
-### Q: Gambar tidak muncul saat akses IPFS?
-**A:**
-- Coba gateway alternatif:
-  - `https://ipfs.io/ipfs/[hash]`
-  - `https://gateway.pinata.cloud/ipfs/[hash]`
-  - `https://cloudflare-ipfs.com/ipfs/[hash]`
-- Tunggu beberapa detik (IPFS butuh waktu propagate)
-- Pastikan file tidak terhapus dari Pinata
+**Dependencies Smart Contract**
+```bash
+npm install @openzeppelin/contracts
+```
 
-### Q: Apakah bisa update durasi setelah petition dibuat?
-**A:** Tidak. Durasi dan deadline bersifat immutable setelah petition dibuat. Hanya bisa close petition lebih awal.
+**Lisk Testnet Configuration**
+- Network: Lisk Sepolia Testnet
+- RPC URL: https://rpc.sepolia-api.lisk.com
+- Chain ID: 4202
+- Currency: ETH
+- Block Explorer: https://sepolia-blockscout.lisk.com
 
-### Q: Petition otomatis expired?
-**A:** Ya, setelah deadline lewat, petition tidak bisa di-sign lagi (cek `block.timestamp`)
+**Wallet Setup**
+1. Install MetaMask
+2. Tambahkan Lisk Sepolia Testnet ke MetaMask
+3. Dapatkan testnet ETH dari faucet: https://sepolia-faucet.lisk.com
+
+**Panna SDK untuk Gasless Transaction**
+```bash
+npm install @lisk-sdk/client
+```
 
 ---
 
-## 📈 Economics & Pricing Examples
+## Deployment dengan Remix
 
-### Contoh Kasus Real-World:
+### Step 1: Persiapan File Contract
 
-**Creator A - Aktivis Lingkungan:**
-- Mint NFT: 0.02 ETH → dapat 1 token gratis
-- Petition 1 (7 hari, pakai token): FREE
-- Petition 2 (14 hari, bayar): 0.0041 ETH
-- Petition 3 (30 hari, bayar): 0.0089 ETH
-- Petition 4 (60 hari, bayar): 0.0179 ETH
-- Petition 5 (7 hari, bayar): 0.002 ETH
-- **Total spent**: 0.02 + 0.0041 + 0.0089 + 0.0179 + 0.002 = **0.0529 ETH**
-- **Reward**: Dapat 1 token gratis (bisa buat petition 7 hari lagi)
+1. Buka Remix IDE: https://remix.ethereum.org
+2. Buat folder baru: `petition-platform`
+3. Buat 3 file contract:
+   - `CampaignToken.sol`
+   - `SoulboundMember.sol`
+   - `PetitionPlatform.sol`
 
-**Creator B - Sering Campaign Pendek:**
-- Mint NFT: 0.02 ETH → dapat 1 token gratis
-- Petition 1-5 (semua 7 hari): 1 gratis + 4 × 0.002 = 0.008 ETH
-- **Total spent**: 0.02 + 0.008 = **0.028 ETH**
-- **Reward**: Dapat 1 token (bisa buat 1 lagi gratis)
-- Lebih murah karena selalu pilih 7 hari!
+### Step 2: Compile Contracts
 
-**Creator C - Campaign Jangka Panjang:**
-- Mint NFT: 0.02 ETH
-- Petition 1 (90 hari, bayar): 0.0269 ETH
-- Petition 2 (90 hari, bayar): 0.0269 ETH
-- **Total spent**: 0.02 + 0.0538 = **0.0738 ETH**
-- Lebih mahal tapi durasi 3x lebih lama!
+1. Buka tab "Solidity Compiler"
+2. Pilih compiler version: `0.8.30`
+3. Enable optimization: 200 runs
+4. Compile semua contract:
+   - Compile `CampaignToken.sol`
+   - Compile `SoulboundMember.sol`
+   - Compile `PetitionPlatform.sol`
 
-### ROI Analysis:
+### Step 3: Deploy CampaignToken
 
-| Strategi | Petitions | Total Cost | Cost per Petition | Benefit |
-|----------|-----------|------------|-------------------|---------|
-| 7 hari only | 5 | 0.028 ETH | 0.0056 ETH | + 1 token reward |
-| Mixed (7-30 hari) | 5 | 0.0529 ETH | 0.01058 ETH | + 1 token reward |
-| Long term (90 hari) | 2 | 0.0738 ETH | 0.0369 ETH | Durasi 13x lebih lama |
+1. Buka tab "Deploy & Run Transactions"
+2. Pilih Environment: "Injected Provider - MetaMask"
+3. Pastikan MetaMask terhubung ke Lisk Sepolia Testnet
+4. Pilih contract: `CampaignToken`
+5. Klik "Deploy"
+6. Konfirmasi transaksi di MetaMask
+7. **SIMPAN ADDRESS**: Copy address contract yang baru di-deploy
+
+**Contoh Address**: `0x1234...abcd` (CampaignToken)
+
+### Step 4: Deploy SoulboundMember
+
+1. Pilih contract: `SoulboundMember`
+2. Masukkan parameter constructor:
+   - `_campaignToken`: [Address CampaignToken dari Step 3]
+3. Klik "Deploy"
+4. Konfirmasi transaksi di MetaMask
+5. **SIMPAN ADDRESS**: Copy address contract yang baru di-deploy
+
+**Contoh Address**: `0x5678...efgh` (SoulboundMember)
+
+### Step 5: Deploy PetitionPlatform
+
+1. Pilih contract: `PetitionPlatform`
+2. Masukkan parameter constructor:
+   - `_soulboundMember`: [Address SoulboundMember dari Step 4]
+   - `_campaignToken`: [Address CampaignToken dari Step 3]
+3. Klik "Deploy"
+4. Konfirmasi transaksi di MetaMask
+5. **SIMPAN ADDRESS**: Copy address contract yang baru di-deploy
+
+**Contoh Address**: `0x9abc...ijkl` (PetitionPlatform)
+
+### Step 6: Setup Contract Connections
+
+**A. Setup CampaignToken**
+
+1. Expand contract `CampaignToken` di Remix
+2. Panggil function `setSoulboundMemberContract`:
+   - Input: [Address SoulboundMember]
+   - Klik "transact"
+   - Konfirmasi di MetaMask
+
+3. Panggil function `setPetitionContract`:
+   - Input: [Address PetitionPlatform]
+   - Klik "transact"
+   - Konfirmasi di MetaMask
+
+**B. Setup SoulboundMember**
+
+1. Expand contract `SoulboundMember` di Remix
+2. Panggil function `setPetitionContract`:
+   - Input: [Address PetitionPlatform]
+   - Klik "transact"
+   - Konfirmasi di MetaMask
+
+### Step 7: Verifikasi Deployment
+
+Panggil function berikut untuk memastikan setup benar:
+
+**CampaignToken:**
+- `petitionContract()` → harus return address PetitionPlatform
+- `soulboundMemberContract()` → harus return address SoulboundMember
+
+**SoulboundMember:**
+- `petitionContract()` → harus return address PetitionPlatform
+- `campaignToken()` → harus return address CampaignToken
+
+**PetitionPlatform:**
+- `soulboundMember()` → harus return address SoulboundMember
+- `campaignToken()` → harus return address CampaignToken
 
 ---
 
-## 🌐 Frontend Integration
+## Deployment dengan Hardhat
 
-### Calculate & Display Pricing (React Example)
+### Step 1: Setup Hardhat Project
+
+```bash
+mkdir petition-platform
+cd petition-platform
+npm init -y
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox
+npx hardhat init
+```
+
+Pilih: "Create a JavaScript project"
+
+### Step 2: Install Dependencies
+
+```bash
+npm install @openzeppelin/contracts
+npm install dotenv
+```
+
+### Step 3: Konfigurasi Hardhat
+
+Buat file `.env`:
+
+```env
+PRIVATE_KEY=your_private_key_here
+LISK_SEPOLIA_RPC=https://rpc.sepolia-api.lisk.com
+```
+
+Edit `hardhat.config.js`:
 
 ```javascript
-import { ethers } from 'ethers';
+require("@nomicfoundation/hardhat-toolbox");
+require("dotenv").config();
 
-// Helper function to calculate fee
-function calculateDisplayFee(durationDays) {
-  const BASE_FEE = 0.002;
-  const BASE_DURATION = 7;
-  const ADDITIONAL_FEE = 0.0003;
-  
-  if (durationDays <= BASE_DURATION) {
-    return BASE_FEE;
+module.exports = {
+  solidity: {
+    version: "0.8.30",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200
+      }
+    }
+  },
+  networks: {
+    liskSepolia: {
+      url: process.env.LISK_SEPOLIA_RPC,
+      accounts: [process.env.PRIVATE_KEY],
+      chainId: 4202
+    }
+  },
+  etherscan: {
+    apiKey: {
+      liskSepolia: "your_blockscout_api_key"
+    },
+    customChains: [
+      {
+        network: "liskSepolia",
+        chainId: 4202,
+        urls: {
+          apiURL: "https://sepolia-blockscout.lisk.com/api",
+          browserURL: "https://sepolia-blockscout.lisk.com"
+        }
+      }
+    ]
   }
+};
+```
+
+### Step 4: Copy Contract Files
+
+Copy 3 contract files ke folder `contracts/`:
+- `contracts/CampaignToken.sol`
+- `contracts/SoulboundMember.sol`
+- `contracts/PetitionPlatform.sol`
+
+### Step 5: Buat Deployment Script
+
+Buat file `scripts/deploy.js`:
+
+```javascript
+const hre = require("hardhat");
+
+async function main() {
+  console.log("Starting deployment...");
   
-  const extraDays = durationDays - BASE_DURATION;
-  return BASE_FEE + (extraDays * ADDITIONAL_FEE);
+  // Get deployer account
+  const [deployer] = await hre.ethers.getSigners();
+  console.log("Deploying with account:", deployer.address);
+  
+  const balance = await hre.ethers.provider.getBalance(deployer.address);
+  console.log("Account balance:", hre.ethers.formatEther(balance), "ETH");
+  
+  // 1. Deploy CampaignToken
+  console.log("\n1. Deploying CampaignToken...");
+  const CampaignToken = await hre.ethers.getContractFactory("CampaignToken");
+  const campaignToken = await CampaignToken.deploy();
+  await campaignToken.waitForDeployment();
+  const campaignTokenAddress = await campaignToken.getAddress();
+  console.log("CampaignToken deployed to:", campaignTokenAddress);
+  
+  // 2. Deploy SoulboundMember
+  console.log("\n2. Deploying SoulboundMember...");
+  const SoulboundMember = await hre.ethers.getContractFactory("SoulboundMember");
+  const soulboundMember = await SoulboundMember.deploy(campaignTokenAddress);
+  await soulboundMember.waitForDeployment();
+  const soulboundMemberAddress = await soulboundMember.getAddress();
+  console.log("SoulboundMember deployed to:", soulboundMemberAddress);
+  
+  // 3. Deploy PetitionPlatform
+  console.log("\n3. Deploying PetitionPlatform...");
+  const PetitionPlatform = await hre.ethers.getContractFactory("PetitionPlatform");
+  const petitionPlatform = await PetitionPlatform.deploy(
+    soulboundMemberAddress,
+    campaignTokenAddress
+  );
+  await petitionPlatform.waitForDeployment();
+  const petitionPlatformAddress = await petitionPlatform.getAddress();
+  console.log("PetitionPlatform deployed to:", petitionPlatformAddress);
+  
+  // 4. Setup connections
+  console.log("\n4. Setting up contract connections...");
+  
+  console.log("Setting SoulboundMember contract in CampaignToken...");
+  let tx = await campaignToken.setSoulboundMemberContract(soulboundMemberAddress);
+  await tx.wait();
+  console.log("Done");
+  
+  console.log("Setting PetitionPlatform contract in CampaignToken...");
+  tx = await campaignToken.setPetitionContract(petitionPlatformAddress);
+  await tx.wait();
+  console.log("Done");
+  
+  console.log("Setting PetitionPlatform contract in SoulboundMember...");
+  tx = await soulboundMember.setPetitionContract(petitionPlatformAddress);
+  await tx.wait();
+  console.log("Done");
+  
+  // 5. Verify setup
+  console.log("\n5. Verifying setup...");
+  const ctPetitionContract = await campaignToken.petitionContract();
+  const ctSoulboundContract = await campaignToken.soulboundMemberContract();
+  const sbPetitionContract = await soulboundMember.petitionContract();
+  const ppSoulboundMember = await petitionPlatform.soulboundMember();
+  const ppCampaignToken = await petitionPlatform.campaignToken();
+  
+  console.log("\nVerification Results:");
+  console.log("CampaignToken.petitionContract:", ctPetitionContract);
+  console.log("CampaignToken.soulboundMemberContract:", ctSoulboundContract);
+  console.log("SoulboundMember.petitionContract:", sbPetitionContract);
+  console.log("PetitionPlatform.soulboundMember:", ppSoulboundMember);
+  console.log("PetitionPlatform.campaignToken:", ppCampaignToken);
+  
+  // 6. Save deployment info
+  console.log("\n6. Saving deployment info...");
+  const deploymentInfo = {
+    network: "liskSepolia",
+    chainId: 4202,
+    deployer: deployer.address,
+    timestamp: new Date().toISOString(),
+    contracts: {
+      CampaignToken: campaignTokenAddress,
+      SoulboundMember: soulboundMemberAddress,
+      PetitionPlatform: petitionPlatformAddress
+    }
+  };
+  
+  const fs = require('fs');
+  fs.writeFileSync(
+    'deployment-info.json',
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+  console.log("Deployment info saved to deployment-info.json");
+  
+  console.log("\n=== DEPLOYMENT COMPLETE ===");
+  console.log("\nContract Addresses:");
+  console.log("CampaignToken:", campaignTokenAddress);
+  console.log("SoulboundMember:", soulboundMemberAddress);
+  console.log("PetitionPlatform:", petitionPlatformAddress);
 }
 
-// React Component
-function CreatePetitionForm() {
-  const [duration, setDuration] = useState(7);
-  const [hasToken, setHasToken] = useState(false);
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+### Step 6: Compile & Deploy
+
+```bash
+# Compile contracts
+npx hardhat compile
+
+# Deploy to Lisk Sepolia
+npx hardhat run scripts/deploy.js --network liskSepolia
+```
+
+### Step 7: Verify Contracts (Optional)
+
+```bash
+npx hardhat verify --network liskSepolia CAMPAIGN_TOKEN_ADDRESS
+
+npx hardhat verify --network liskSepolia SOULBOUND_MEMBER_ADDRESS "CAMPAIGN_TOKEN_ADDRESS"
+
+npx hardhat verify --network liskSepolia PETITION_PLATFORM_ADDRESS "SOULBOUND_MEMBER_ADDRESS" "CAMPAIGN_TOKEN_ADDRESS"
+```
+
+---
+
+## Testing Contract Functions
+
+### Setup Testing Environment
+
+Buat file `scripts/test-functions.js`:
+
+```javascript
+const hre = require("hardhat");
+
+async function main() {
+  // Load deployment info
+  const fs = require('fs');
+  const deploymentInfo = JSON.parse(fs.readFileSync('deployment-info.json', 'utf8'));
   
-  // Calculate fee based on duration
-  const calculatedFee = calculateDisplayFee(duration);
-  const canUseToken = hasToken && duration <= 7;
-  const displayFee = canUseToken ? 0 : calculatedFee;
+  const [deployer, user1, user2] = await hre.ethers.getSigners();
+  
+  console.log("Testing with accounts:");
+  console.log("Deployer:", deployer.address);
+  console.log("User1:", user1.address);
+  console.log("User2:", user2.address);
+  
+  // Get contract instances
+  const campaignToken = await hre.ethers.getContractAt(
+    "CampaignToken",
+    deploymentInfo.contracts.CampaignToken
+  );
+  
+  const soulboundMember = await hre.ethers.getContractAt(
+    "SoulboundMember",
+    deploymentInfo.contracts.SoulboundMember
+  );
+  
+  const petitionPlatform = await hre.ethers.getContractAt(
+    "PetitionPlatform",
+    deploymentInfo.contracts.PetitionPlatform
+  );
+  
+  // Test 1: Mint SBT for User1
+  console.log("\n=== TEST 1: Mint Soulbound Member (User1) ===");
+  let tx = await soulboundMember.connect(user1).mintMembership();
+  await tx.wait();
+  console.log("User1 minted SBT successfully");
+  
+  let isMember = await soulboundMember.isMember(user1.address);
+  console.log("User1 is member:", isMember);
+  
+  let tokenBalance = await campaignToken.balanceOf(user1.address);
+  console.log("User1 CampaignToken balance:", hre.ethers.formatEther(tokenBalance));
+  
+  // Test 2: Mint SBT for User2
+  console.log("\n=== TEST 2: Mint Soulbound Member (User2) ===");
+  tx = await soulboundMember.connect(user2).mintMembership();
+  await tx.wait();
+  console.log("User2 minted SBT successfully");
+  
+  // Test 3: Create Petition (Free with Token)
+  console.log("\n=== TEST 3: Create Petition with CampaignToken (User1) ===");
+  tx = await petitionPlatform.connect(user1).createPetition(
+    "Stop Deforestation",
+    "We need to protect our forests for future generations",
+    "QmXxxx...ipfsHash"
+  );
+  let receipt = await tx.wait();
+  console.log("Petition created successfully");
+  
+  let totalPetitions = await petitionPlatform.getTotalPetitions();
+  console.log("Total petitions:", totalPetitions.toString());
+  
+  let petition = await petitionPlatform.getPetition(0);
+  console.log("Petition details:", {
+    id: petition.id.toString(),
+    title: petition.title,
+    creator: petition.creator,
+    signatureCount: petition.signatureCount.toString()
+  });
+  
+  // Test 4: Create Petition (Paid with ETH)
+  console.log("\n=== TEST 4: Create Petition with ETH Payment (User1) ===");
+  const baseFee = await petitionPlatform.baseCampaignFee();
+  tx = await petitionPlatform.connect(user1).createPetition(
+    "Clean Water Initiative",
+    "Ensure access to clean water for all communities",
+    "QmYyyy...ipfsHash",
+    { value: baseFee }
+  );
+  await tx.wait();
+  console.log("Paid petition created successfully");
+  
+  // Test 5: Sign Petition (User2 signs User1's petition)
+  console.log("\n=== TEST 5: Sign Petition (User2 signs petition #0) ===");
+  tx = await petitionPlatform.connect(user2).signPetition(0);
+  await tx.wait();
+  console.log("User2 signed petition successfully");
+  
+  petition = await petitionPlatform.getPetition(0);
+  console.log("Updated signature count:", petition.signatureCount.toString());
+  
+  let hasSigned = await petitionPlatform.hasUserSigned(0, user2.address);
+  console.log("User2 has signed:", hasSigned);
+  
+  // Test 6: Try to sign own petition (should fail)
+  console.log("\n=== TEST 6: Try to Sign Own Petition (Should Fail) ===");
+  try {
+    tx = await petitionPlatform.connect(user1).signPetition(0);
+    await tx.wait();
+    console.log("ERROR: Should have failed!");
+  } catch (error) {
+    console.log("Correctly prevented creator from signing own petition");
+  }
+  
+  // Test 7: Boost Petition
+  console.log("\n=== TEST 7: Boost Petition (User1 boosts petition #0) ===");
+  const boostFee = await petitionPlatform.boostingFee();
+  tx = await petitionPlatform.connect(user1).boostPetition(0, { value: boostFee });
+  await tx.wait();
+  console.log("Petition boosted successfully");
+  
+  petition = await petitionPlatform.getPetition(0);
+  console.log("Boost details:", {
+    boostEndTime: new Date(Number(petition.boostEndTime) * 1000).toISOString(),
+    boostPriority: petition.boostPriority.toString()
+  });
+  
+  let isBoosted = await petitionPlatform.isPetitionBoosted(0);
+  console.log("Is petition boosted:", isBoosted);
+  
+  // Test 8: Get All Petitions
+  console.log("\n=== TEST 8: Get All Petitions ===");
+  let allPetitions = await petitionPlatform.getAllPetitions();
+  console.log("Total petitions:", allPetitions.length);
+  allPetitions.forEach((p, index) => {
+    console.log(`Petition ${index}:`, {
+      title: p.title,
+      creator: p.creator,
+      signatures: p.signatureCount.toString(),
+      boosted: p.boostEndTime > 0n
+    });
+  });
+  
+  // Test 9: Get Active Boosted Petitions
+  console.log("\n=== TEST 9: Get Active Boosted Petitions ===");
+  let boostedPetitions = await petitionPlatform.getActiveBoostedPetitions();
+  console.log("Active boosted petitions:", boostedPetitions.length);
+  
+  console.log("\n=== ALL TESTS COMPLETED ===");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+```
+
+### Run Tests
+
+```bash
+npx hardhat run scripts/test-functions.js --network liskSepolia
+```
+
+---
+
+## Integrasi Frontend
+
+### Setup Web3 Connection
+
+**Install Dependencies:**
+
+```bash
+npm install ethers wagmi viem @tanstack/react-query
+```
+
+### Configuration File
+
+Buat file `src/config/contracts.js`:
+
+```javascript
+export const CONTRACTS = {
+  CampaignToken: {
+    address: "YOUR_CAMPAIGN_TOKEN_ADDRESS",
+    abi: [/* ABI dari compiled contract */]
+  },
+  SoulboundMember: {
+    address: "YOUR_SOULBOUND_MEMBER_ADDRESS",
+    abi: [/* ABI dari compiled contract */]
+  },
+  PetitionPlatform: {
+    address: "YOUR_PETITION_PLATFORM_ADDRESS",
+    abi: [/* ABI dari compiled contract */]
+  }
+};
+
+export const LISK_SEPOLIA = {
+  id: 4202,
+  name: "Lisk Sepolia",
+  network: "lisk-sepolia",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ethereum",
+    symbol: "ETH"
+  },
+  rpcUrls: {
+    default: { http: ["https://rpc.sepolia-api.lisk.com"] },
+    public: { http: ["https://rpc.sepolia-api.lisk.com"] }
+  },
+  blockExplorers: {
+    default: {
+      name: "Blockscout",
+      url: "https://sepolia-blockscout.lisk.com"
+    }
+  },
+  testnet: true
+};
+```
+
+### React Hooks untuk Contract Interaction
+
+**1. Hook untuk Mint SBT:**
+
+```javascript
+// hooks/useMintSBT.js
+import { useContractWrite, useWaitForTransaction } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
+
+export function useMintSBT() {
+  const { write, data, isLoading, error } = useContractWrite({
+    address: CONTRACTS.SoulboundMember.address,
+    abi: CONTRACTS.SoulboundMember.abi,
+    functionName: 'mintMembership'
+  });
+  
+  const { isLoading: isWaiting, isSuccess } = useWaitForTransaction({
+    hash: data?.hash
+  });
+  
+  return {
+    mintSBT: write,
+    isLoading: isLoading || isWaiting,
+    isSuccess,
+    error
+  };
+}
+```
+
+**2. Hook untuk Check Membership:**
+
+```javascript
+// hooks/useIsMember.js
+import { useContractRead } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
+
+export function useIsMember(address) {
+  const { data, isLoading, error } = useContractRead({
+    address: CONTRACTS.SoulboundMember.address,
+    abi: CONTRACTS.SoulboundMember.abi,
+    functionName: 'isMember',
+    args: [address],
+    watch: true
+  });
+  
+  return {
+    isMember: data || false,
+    isLoading,
+    error
+  };
+}
+```
+
+**3. Hook untuk Create Petition:**
+
+```javascript
+// hooks/useCreatePetition.js
+import { useContractWrite, useWaitForTransaction, useContractRead } from 'wagmi';
+import { parseEther } from 'viem';
+import { CONTRACTS } from '../config/contracts';
+
+export function useCreatePetition() {
+  // Check user's token balance
+  const { data: tokenBalance } = useContractRead({
+    address: CONTRACTS.CampaignToken.address,
+    abi: CONTRACTS.CampaignToken.abi,
+    functionName: 'balanceOf',
+    args: [address]
+  });
+  
+  const hasToken = tokenBalance && tokenBalance >= parseEther('1');
+  
+  const { write, data, isLoading, error } = useContractWrite({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'createPetition'
+  });
+  
+  const { isLoading: isWaiting, isSuccess } = useWaitForTransaction({
+    hash: data?.hash
+  });
+  
+  const createPetition = async (title, description, imageHash) => {
+    const baseFee = await readContract({
+      address: CONTRACTS.PetitionPlatform.address,
+      abi: CONTRACTS.PetitionPlatform.abi,
+      functionName: 'baseCampaignFee'
+    });
+    
+    write({
+      args: [title, description, imageHash],
+      value: hasToken ? 0n : baseFee
+    });
+  };
+  
+  return {
+    createPetition,
+    hasToken,
+    isLoading: isLoading || isWaiting,
+    isSuccess,
+    error
+  };
+}
+```
+
+**4. Hook untuk Sign Petition:**
+
+```javascript
+// hooks/useSignPetition.js
+import { useContractWrite, useWaitForTransaction } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
+
+export function useSignPetition() {
+  const { write, data, isLoading, error } = useContractWrite({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'signPetition'
+  });
+  
+  const { isLoading: isWaiting, isSuccess } = useWaitForTransaction({
+    hash: data?.hash
+  });
+  
+  const signPetition = (petitionId) => {
+    write({
+      args: [petitionId]
+    });
+  };
+  
+  return {
+    signPetition,
+    isLoading: isLoading || isWaiting,
+    isSuccess,
+    error
+  };
+}
+```
+
+**5. Hook untuk Boost Petition:**
+
+```javascript
+// hooks/useBoostPetition.js
+import { useContractWrite, useWaitForTransaction } from 'wagmi';
+import { parseEther } from 'viem';
+import { CONTRACTS } from '../config/contracts';
+
+export function useBoostPetition() {
+  const { write, data, isLoading, error } = useContractWrite({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'boostPetition'
+  });
+  
+  const { isLoading: isWaiting, isSuccess } = useWaitForTransaction({
+    hash: data?.hash
+  });
+  
+  const boostPetition = (petitionId) => {
+    write({
+      args: [petitionId],
+      value: parseEther('0.001')
+    });
+  };
+  
+  return {
+    boostPetition,
+    isLoading: isLoading || isWaiting,
+    isSuccess,
+    error
+  };
+}
+```
+
+**6. Hook untuk Get All Petitions:**
+
+```javascript
+// hooks/usePetitions.js
+import { useContractRead } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
+
+export function usePetitions() {
+  const { data, isLoading, error, refetch } = useContractRead({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'getAllPetitions',
+    watch: true
+  });
+  
+  // Sort petitions: boosted first (by priority DESC), then by createdAt ASC
+  const sortedPetitions = data ? [...data].sort((a, b) => {
+    const now = Math.floor(Date.now() / 1000);
+    const aIsBoosted = Number(a.boostEndTime) > now;
+    const bIsBoosted = Number(b.boostEndTime) > now;
+    
+    if (aIsBoosted && bIsBoosted) {
+      return Number(b.boostPriority) - Number(a.boostPriority);
+    }
+    if (aIsBoosted) return -1;
+    if (bIsBoosted) return 1;
+    
+    return Number(a.createdAt) - Number(b.createdAt);
+  }) : [];
+  
+  return {
+    petitions: sortedPetitions,
+    isLoading,
+    error,
+    refetch
+  };
+}
+```
+
+### Component Examples
+
+**Component: Register Page**
+
+```jsx
+// pages/Register.jsx
+import { useMintSBT } from '../hooks/useMintSBT';
+import { useIsMember } from '../hooks/useIsMember';
+import { useAccount } from 'wagmi';
+
+export function Register() {
+  const { address } = useAccount();
+  const { isMember, isLoading: checkingMember } = useIsMember(address);
+  const { mintSBT, isLoading, isSuccess, error } = useMintSBT();
+  
+  if (checkingMember) return <div>Checking membership...</div>;
+  if (isMember) return <div>You are already a member!</div>;
   
   return (
     <div>
-      <h2>Create Petition</h2>
+      <h1>Register as Member</h1>
+      <p>Mint your Soulbound Token to become a member</p>
+      <p>You will receive 1 free CampaignToken for creating your first petition</p>
       
-      {/* Duration Slider */}
-      <label>Duration: {duration} days</label>
-      <input 
-        type="range" 
-        min="1" 
-        max="365" 
-        value={duration}
-        onChange={(e) => setDuration(Number(e.target.value))}
-      />
+      <button 
+        onClick={() => mintSBT()}
+        disabled={isLoading}
+      >
+        {isLoading ? 'Minting...' : 'Mint Soulbound Token'}
+      </button>
       
-      {/* Pricing Display */}
-      <div className="pricing-info">
-        {canUseToken ? (
-          <div className="free-badge">
-            ✅ FREE (Using Token)
-          </div>
-        ) : (
-          <div className="fee-display">
-            💰 Fee: {displayFee.toFixed(4)} ETH
-            {hasToken && duration > 7 && (
-              <p className="warning">
-                ⚠️ Token only works for ≤7 days. 
-                For {duration} days, you must pay {displayFee.toFixed(4)} ETH
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Pricing Breakdown */}
-      {duration > 7 && !canUseToken && (
-        <div className="breakdown">
-          <p>Base (7 days): 0.002 ETH</p>
-          <p>Extra days ({duration - 7}): {((duration - 7) * 0.0003).toFixed(4)} ETH</p>
-          <hr />
-          <p><strong>Total: {calculatedFee.toFixed(4)} ETH</strong></p>
-        </div>
-      )}
-      
-      {/* Form fields... */}
+      {isSuccess && <p>Successfully minted! You are now a member.</p>}
+      {error && <p>Error: {error.message}</p>}
     </div>
   );
 }
 ```
 
-### Create Petition with Dynamic Fee
+**Component: Create Petition Page**
 
-```javascript
-async function createPetition(title, description, imageHash, duration) {
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+```jsx
+// pages/CreatePetition.jsx
+import { useState } from 'react';
+import { useCreatePetition } from '../hooks/useCreatePetition';
+import { useIsMember } from '../hooks/useIsMember';
+import { useAccount } from 'wagmi';
+
+export function CreatePetition() {
+  const { address } = useAccount();
+  const { isMember } = useIsMember(address);
+  const { createPetition, hasToken, isLoading, isSuccess, error } = useCreatePetition();
   
-  // 1. Check if user has token
-  const tokenBalance = await campaignTokenContract.balanceOf(
-    await signer.getAddress()
-  );
-  const hasToken = tokenBalance.gte(ethers.utils.parseEther('1'));
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    imageHash: ''
+  });
   
-  // 2. Calculate required fee
-  const requiredFee = await contract.calculateCampaignFee(duration);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await createPetition(
+      formData.title,
+      formData.description,
+      formData.imageHash
+    );
+  };
   
-  // 3. Determine payment method
-  let txValue = ethers.BigNumber.from(0);
-  
-  if (hasToken && duration <= 7) {
-    // Can use token for free
-    console.log('Using free token');
-    txValue = ethers.BigNumber.from(0);
-  } else {
-    // Must pay with ETH
-    console.log(`Paying ${ethers.utils.formatEther(requiredFee)} ETH`);
-    txValue = requiredFee;
+  if (!isMember) {
+    return <div>You need to be a member to create petitions</div>;
   }
   
-  // 4. Create petition
+  return (
+    <div>
+      <h1>Create Petition</h1>
+      
+      {hasToken ? (
+        <p>You have a free CampaignToken. This petition will be FREE!</p>
+      ) : (
+        <p>Cost: 0.002 ETH + gas fees</p>
+      )}
+      
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Title:</label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            required
+          />
+        </div>
+        
+        <div>
+          <label>Description:</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({...formData, description: e.target.value})}
+            required
+          />
+        </div>
+        
+        <div>
+          <label>Image IPFS Hash:</label>
+          <input
+            type="text"
+            value={formData.imageHash}
+            onChange={(e) => setFormData({...formData, imageHash: e.target.value})}
+            placeholder="QmXxxx..."
+            required
+          />
+        </div>
+        
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Creating...' : 'Create Petition'}
+        </button>
+      </form>
+      
+      {isSuccess && <p>Petition created successfully!</p>}
+      {error && <p>Error: {error.message}</p>}
+    </div>
+  );
+}
+```
+
+**Component: Petition List**
+
+```jsx
+// components/PetitionList.jsx
+import { usePetitions } from '../hooks/usePetitions';
+import { PetitionCard } from './PetitionCard';
+
+export function PetitionList() {
+  const { petitions, isLoading, error } = usePetitions();
+  
+  if (isLoading) return <div>Loading petitions...</div>;
+  if (error) return <div>Error loading petitions: {error.message}</div>;
+  if (!petitions || petitions.length === 0) return <div>No petitions yet</div>;
+  
+  return (
+    <div>
+      <h2>All Petitions</h2>
+      <div className="petition-grid">
+        {petitions.map((petition) => (
+          <PetitionCard 
+            key={petition.id.toString()} 
+            petition={petition} 
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+**Component: Petition Card**
+
+```jsx
+// components/PetitionCard.jsx
+import { useSignPetition } from '../hooks/useSignPetition';
+import { useBoostPetition } from '../hooks/useBoostPetition';
+import { useAccount } from 'wagmi';
+import { useContractRead } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
+
+export function PetitionCard({ petition }) {
+  const { address } = useAccount();
+  const { signPetition, isLoading: isSigning } = useSignPetition();
+  const { boostPetition, isLoading: isBoosting } = useBoostPetition();
+  
+  // Check if user has signed
+  const { data: hasSigned } = useContractRead({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'hasUserSigned',
+    args: [petition.id, address]
+  });
+  
+  const isCreator = petition.creator.toLowerCase() === address?.toLowerCase();
+  const now = Math.floor(Date.now() / 1000);
+  const isBoosted = Number(petition.boostEndTime) > now;
+  const boostEndDate = isBoosted 
+    ? new Date(Number(petition.boostEndTime) * 1000).toLocaleString()
+    : null;
+  
+  return (
+    <div className={`petition-card ${isBoosted ? 'boosted' : ''}`}>
+      {isBoosted && (
+        <div className="boost-badge">
+          BOOSTED until {boostEndDate}
+        </div>
+      )}
+      
+      <img 
+        src={`https://gateway.pinata.cloud/ipfs/${petition.imageHash}`} 
+        alt={petition.title}
+      />
+      
+      <h3>{petition.title}</h3>
+      <p>{petition.description}</p>
+      
+      <div className="petition-meta">
+        <p>Creator: {petition.creator.slice(0, 6)}...{petition.creator.slice(-4)}</p>
+        <p>Signatures: {petition.signatureCount.toString()}</p>
+        <p>Created: {new Date(Number(petition.createdAt) * 1000).toLocaleDateString()}</p>
+      </div>
+      
+      <div className="petition-actions">
+        {!isCreator && !hasSigned && (
+          <button 
+            onClick={() => signPetition(petition.id)}
+            disabled={isSigning}
+          >
+            {isSigning ? 'Signing...' : 'Sign Petition'}
+          </button>
+        )}
+        
+        {isCreator && !isBoosted && (
+          <button 
+            onClick={() => boostPetition(petition.id)}
+            disabled={isBoosting}
+          >
+            {isBoosting ? 'Boosting...' : 'Boost (0.001 ETH)'}
+          </button>
+        )}
+        
+        {hasSigned && <p className="signed-badge">You signed this</p>}
+        {isCreator && <p className="creator-badge">Your petition</p>}
+      </div>
+    </div>
+  );
+}
+```
+
+### Upload Image ke Pinata (IPFS)
+
+**Setup Pinata:**
+
+```bash
+npm install pinata-web3
+```
+
+**Upload Function:**
+
+```javascript
+// utils/pinata.js
+import { PinataSDK } from "pinata-web3";
+
+const pinata = new PinataSDK({
+  pinataJwt: process.env.REACT_APP_PINATA_JWT,
+  pinataGateway: process.env.REACT_APP_PINATA_GATEWAY
+});
+
+export async function uploadImageToPinata(file) {
   try {
-    const tx = await contract.createPetition(
-      title,
-      description,
-      imageHash,
-      duration,
-      { value: txValue }
-    );
-    
-    const receipt = await tx.wait();
-    console.log('Petition created!', receipt);
-    
-    // 5. Check if got reward
-    const event = receipt.events?.find(e => e.event === 'RewardTokenMinted');
-    if (event) {
-      alert('🎉 Congrats! You earned 1 Campaign Token reward!');
-    }
-    
-    return receipt;
+    const upload = await pinata.upload.file(file);
+    return upload.IpfsHash;
   } catch (error) {
-    console.error('Error creating petition:', error);
+    console.error("Error uploading to Pinata:", error);
     throw error;
   }
 }
 ```
 
-### Pricing Calculator Component
+**Usage in Component:**
+
+```jsx
+// In CreatePetition component
+const [imageFile, setImageFile] = useState(null);
+const [uploading, setUploading] = useState(false);
+
+const handleImageUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  setUploading(true);
+  try {
+    const ipfsHash = await uploadImageToPinata(file);
+    setFormData({...formData, imageHash: ipfsHash});
+  } catch (error) {
+    alert('Error uploading image');
+  } finally {
+    setUploading(false);
+  }
+};
+
+// In the form
+<input 
+  type="file" 
+  accept="image/*"
+  onChange={handleImageUpload}
+  disabled={uploading}
+/>
+{uploading && <p>Uploading image...</p>}
+```
+
+---
+
+## Integrasi Backend
+
+### Setup Express.js Server
+
+**Install Dependencies:**
+
+```bash
+npm install express cors dotenv ethers
+```
+
+**Server Configuration:**
 
 ```javascript
-function PricingCalculator() {
-  const [duration, setDuration] = useState(7);
-  
-  const pricing = [
-    { days: 7, fee: 0.002, note: 'Base price / Use free token' },
-    { days: 14, fee: 0.0041, note: '7 days @ 0.0003 ETH/day' },
-    { days: 30, fee: 0.0089, note: '23 days @ 0.0003 ETH/day' },
-    { days: 60, fee: 0.0179, note: '53 days @ 0.0003 ETH/day' },
-    { days: 90, fee: 0.0269, note: '83 days @ 0.0003 ETH/day' },
-  ];
-  
-  const calculatedFee = calculateDisplayFee(duration);
-  
-  return (
-    <div className="pricing-calculator">
-      <h3>Pricing Calculator</h3>
+// server.js
+const express = require('express');
+const cors = require('cors');
+const { ethers } = require('ethers');
+require('dotenv').config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Setup provider
+const provider = new ethers.JsonRpcProvider(process.env.LISK_SEPOLIA_RPC);
+
+// Contract ABIs and addresses
+const CONTRACTS = {
+  SoulboundMember: {
+    address: process.env.SOULBOUND_MEMBER_ADDRESS,
+    abi: require('./abis/SoulboundMember.json')
+  },
+  PetitionPlatform: {
+    address: process.env.PETITION_PLATFORM_ADDRESS,
+    abi: require('./abis/PetitionPlatform.json')
+  }
+};
+
+// Get contract instances
+const soulboundMember = new ethers.Contract(
+  CONTRACTS.SoulboundMember.address,
+  CONTRACTS.SoulboundMember.abi,
+  provider
+);
+
+const petitionPlatform = new ethers.Contract(
+  CONTRACTS.PetitionPlatform.address,
+  CONTRACTS.PetitionPlatform.abi,
+  provider
+);
+
+// API Routes
+
+// Check if address is member
+app.get('/api/member/:address', async (req, res) => {
+  try {
+    const { address } = req.params;
+    const isMember = await soulboundMember.isMember(address);
+    res.json({ isMember });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all petitions
+app.get('/api/petitions', async (req, res) => {
+  try {
+    const petitions = await petitionPlatform.getAllPetitions();
+    
+    // Format petitions
+    const formattedPetitions = petitions.map(p => ({
+      id: p.id.toString(),
+      title: p.title,
+      description: p.description,
+      imageHash: p.imageHash,
+      creator: p.creator,
+      createdAt: Number(p.createdAt),
+      boostEndTime: Number(p.boostEndTime),
+      boostPriority: Number(p.boostPriority),
+      signatureCount: Number(p.signatureCount)
+    }));
+    
+    // Sort petitions
+    const now = Math.floor(Date.now() / 1000);
+    const sorted = formattedPetitions.sort((a, b) => {
+      const aIsBoosted = a.boostEndTime > now;
+      const bIsBoosted = b.boostEndTime > now;
       
-      <input 
-        type="number" 
-        value={duration}
-        onChange={(e) => setDuration(Number(e.target.value))}
-        min="1"
-        max="365"
-      />
+      if (aIsBoosted && bIsBoosted) {
+        return b.boostPriority - a.boostPriority;
+      }
+      if (aIsBoosted) return -1;
+      if (bIsBoosted) return 1;
       
-      <div className="result">
-        <h4>{duration} days = {calculatedFee.toFixed(4)} ETH</h4>
-      </div>
+      return a.createdAt - b.createdAt;
+    });
+    
+    res.json({ petitions: sorted });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single petition
+app.get('/api/petitions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const petition = await petitionPlatform.getPetition(id);
+    
+    res.json({
+      id: petition.id.toString(),
+      title: petition.title,
+      description: petition.description,
+      imageHash: petition.imageHash,
+      creator: petition.creator,
+      createdAt: Number(petition.createdAt),
+      boostEndTime: Number(petition.boostEndTime),
+      boostPriority: Number(petition.boostPriority),
+      signatureCount: Number(petition.signatureCount)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Check if user signed petition
+app.get('/api/petitions/:id/signed/:address', async (req, res) => {
+  try {
+    const { id, address } = req.params;
+    const hasSigned = await petitionPlatform.hasUserSigned(id, address);
+    res.json({ hasSigned });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get active boosted petitions
+app.get('/api/petitions/boosted/active', async (req, res) => {
+  try {
+    const petitions = await petitionPlatform.getActiveBoostedPetitions();
+    
+    const formattedPetitions = petitions.map(p => ({
+      id: p.id.toString(),
+      title: p.title,
+      description: p.description,
+      imageHash: p.imageHash,
+      creator: p.creator,
+      createdAt: Number(p.createdAt),
+      boostEndTime: Number(p.boostEndTime),
+      boostPriority: Number(p.boostPriority),
+      signatureCount: Number(p.signatureCount)
+    }));
+    
+    // Sort by boostPriority DESC
+    const sorted = formattedPetitions.sort((a, b) => b.boostPriority - a.boostPriority);
+    
+    res.json({ petitions: sorted });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get petition stats
+app.get('/api/stats', async (req, res) => {
+  try {
+    const totalPetitions = await petitionPlatform.getTotalPetitions();
+    const totalMembers = await soulboundMember.totalSupply();
+    
+    res.json({
+      totalPetitions: Number(totalPetitions),
+      totalMembers: Number(totalMembers)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Listen to events
+async function setupEventListeners() {
+  // Listen to new petitions
+  petitionPlatform.on('PetitionCreated', (petitionId, creator, title, imageHash, usedToken, feePaid, createdAt) => {
+    console.log('New petition created:', {
+      petitionId: petitionId.toString(),
+      creator,
+      title,
+      usedToken,
+      feePaid: ethers.formatEther(feePaid)
+    });
+  });
+  
+  // Listen to signatures
+  petitionPlatform.on('PetitionSigned', (petitionId, signer, newSignatureCount) => {
+    console.log('Petition signed:', {
+      petitionId: petitionId.toString(),
+      signer,
+      newSignatureCount: newSignatureCount.toString()
+    });
+  });
+  
+  // Listen to boosts
+  petitionPlatform.on('PetitionBoosted', (petitionId, booster, boostEndTime, boostPriority) => {
+    console.log('Petition boosted:', {
+      petitionId: petitionId.toString(),
+      booster,
+      boostEndTime: new Date(Number(boostEndTime) * 1000).toISOString(),
+      boostPriority: boostPriority.toString()
+    });
+  });
+  
+  console.log('Event listeners setup complete');
+}
+
+setupEventListeners();
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+```
+
+### Database Integration (Optional)
+
+**Setup MongoDB:**
+
+```bash
+npm install mongoose
+```
+
+**Schema Definition:**
+
+```javascript
+// models/Petition.js
+const mongoose = require('mongoose');
+
+const PetitionSchema = new mongoose.Schema({
+  petitionId: {
+    type: Number,
+    required: true,
+    unique: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  imageHash: {
+    type: String,
+    required: true
+  },
+  creator: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Number,
+    required: true
+  },
+  boostEndTime: {
+    type: Number,
+    default: 0
+  },
+  boostPriority: {
+    type: Number,
+    default: 0
+  },
+  signatureCount: {
+    type: Number,
+    default: 0
+  },
+  signatures: [{
+    signer: String,
+    signedAt: Number
+  }],
+  transactionHash: String
+});
+
+module.exports = mongoose.model('Petition', PetitionSchema);
+```
+
+**Indexer Service:**
+
+```javascript
+// services/indexer.js
+const { ethers } = require('ethers');
+const Petition = require('../models/Petition');
+
+class BlockchainIndexer {
+  constructor(provider, petitionPlatformContract) {
+    this.provider = provider;
+    this.contract = petitionPlatformContract;
+  }
+  
+  async indexPetitionCreated(petitionId, creator, title, imageHash, usedToken, feePaid, createdAt, txHash) {
+    try {
+      const petition = new Petition({
+        petitionId: Number(petitionId),
+        title,
+        description: '', // Will be fetched from contract
+        imageHash,
+        creator,
+        createdAt: Number(createdAt),
+        transactionHash: txHash
+      });
       
-      <table>
-        <thead>
-          <tr>
-            <th>Duration</th>
-            <th>Fee</th>
-            <th>Note</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pricing.map(p => (
-            <tr key={p.days}>
-              <td>{p.days} days</td>
-              <td>{p.fee} ETH</td>
-              <td>{p.note}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+      // Fetch full details from contract
+      const fullDetails = await this.contract.getPetition(petitionId);
+      petition.description = fullDetails.description;
+      
+      await petition.save();
+      console.log(`Indexed petition ${petitionId}`);
+    } catch (error) {
+      console.error('Error indexing petition:', error);
+    }
+  }
+  
+  async indexPetitionSigned(petitionId, signer, newSignatureCount, txHash) {
+    try {
+      const petition = await Petition.findOne({ petitionId: Number(petitionId) });
+      if (petition) {
+        petition.signatureCount = Number(newSignatureCount);
+        petition.signatures.push({
+          signer,
+          signedAt: Math.floor(Date.now() / 1000)
+        });
+        await petition.save();
+        console.log(`Indexed signature for petition ${petitionId}`);
+      }
+    } catch (error) {
+      console.error('Error indexing signature:', error);
+    }
+  }
+  
+  async indexPetitionBoosted(petitionId, booster, boostEndTime, boostPriority, txHash) {
+    try {
+      const petition = await Petition.findOne({ petitionId: Number(petitionId) });
+      if (petition) {
+        petition.boostEndTime = Number(boostEndTime);
+        petition.boostPriority = Number(boostPriority);
+        await petition.save();
+        console.log(`Indexed boost for petition ${petitionId}`);
+      }
+    } catch (error) {
+      console.error('Error indexing boost:', error);
+    }
+  }
+  
+  async startIndexing() {
+    console.log('Starting blockchain indexer...');
+    
+    // Listen to new events
+    this.contract.on('PetitionCreated', async (petitionId, creator, title, imageHash, usedToken, feePaid, createdAt, event) => {
+      await this.indexPetitionCreated(petitionId, creator, title, imageHash, usedToken, feePaid, createdAt, event.transactionHash);
+    });
+    
+    this.contract.on('PetitionSigned', async (petitionId, signer, newSignatureCount, event) => {
+      await this.indexPetitionSigned(petitionId, signer, newSignatureCount, event.transactionHash);
+    });
+    
+    this.contract.on('PetitionBoosted', async (petitionId, booster, boostEndTime, boostPriority, event) => {
+      await this.indexPetitionBoosted(petitionId, booster, boostEndTime, boostPriority, event.transactionHash);
+    });
+    
+    console.log('Indexer is listening to events');
+  }
+  
+  async indexHistoricalData(fromBlock = 0) {
+    console.log('Indexing historical data...');
+    
+    const filter = this.contract.filters.PetitionCreated();
+    const events = await this.contract.queryFilter(filter, fromBlock);
+    
+    for (const event of events) {
+      await this.indexPetitionCreated(
+        event.args.petitionId,
+        event.args.creator,
+        event.args.title,
+        event.args.imageHash,
+        event.args.usedToken,
+        event.args.feePaid,
+        event.args.createdAt,
+        event.transactionHash
+      );
+    }
+    
+    console.log(`Indexed ${events.length} historical petitions`);
+  }
+}
+
+module.exports = BlockchainIndexer;
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**1. Transaction Reverted: Not a member**
+
+**Penyebab:** User belum mint Soulbound Token
+
+**Solusi:**
+```javascript
+// Check membership before any action
+const isMember = await soulboundMember.isMember(userAddress);
+if (!isMember) {
+  alert('You need to mint Soulbound Token first');
+  return;
+}
+```
+
+**2. Transaction Reverted: Already minted**
+
+**Penyebab:** User sudah pernah mint SBT sebelumnya
+
+**Solusi:**
+```javascript
+// Check before minting
+const hasMinted = await soulboundMember.hasMinted(userAddress);
+if (hasMinted) {
+  alert('You have already minted your Soulbound Token');
+  return;
+}
+```
+
+**3. Transaction Reverted: Creator cannot sign own petition**
+
+**Penyebab:** Creator mencoba tanda tangan petisi sendiri
+
+**Solusi:**
+```javascript
+// Check if user is creator
+const petition = await petitionPlatform.getPetition(petitionId);
+if (petition.creator.toLowerCase() === userAddress.toLowerCase()) {
+  alert('You cannot sign your own petition');
+  return;
+}
+```
+
+**4. Transaction Reverted: Already signed**
+
+**Penyebab:** User sudah tanda tangan petisi tersebut
+
+**Solusi:**
+```javascript
+// Check before signing
+const hasSigned = await petitionPlatform.hasUserSigned(petitionId, userAddress);
+if (hasSigned) {
+  alert('You have already signed this petition');
+  return;
+}
+```
+
+**5. Transaction Reverted: Insufficient fee**
+
+**Penyebab:** Value ETH yang dikirim kurang dari baseCampaignFee atau boostingFee
+
+**Solusi:**
+```javascript
+// Get correct fee amount
+const baseFee = await petitionPlatform.baseCampaignFee();
+// Send exact amount or more
+await petitionPlatform.createPetition(title, description, imageHash, { value: baseFee });
+```
+
+**6. SBT Transfer Failed**
+
+**Penyebab:** User mencoba transfer SBT (token non-transferable)
+
+**Solusi:** SBT tidak bisa ditransfer. Ini adalah expected behavior. Informasikan user bahwa token ini permanent dan tidak bisa dijual/transfer.
+
+**7. Gasless Transaction Failed (Panna SDK)**
+
+**Penyebab:** Konfigurasi Panna SDK tidak tepat
+
+**Solusi:**
+```javascript
+// Setup Panna SDK properly
+import { createPannaClient } from '@lisk-sdk/client';
+
+const pannaClient = createPannaClient({
+  network: 'lisk-sepolia',
+  apiKey: process.env.PANNA_API_KEY
+});
+
+// Use Panna for gasless transactions
+await pannaClient.sendTransaction({
+  to: contractAddress,
+  data: encodedFunctionCall
+});
+```
+
+**8. Image Not Loading from IPFS**
+
+**Penyebab:** IPFS hash salah atau gateway tidak responsif
+
+**Solusi:**
+```javascript
+// Use multiple gateways
+const gateways = [
+  'https://gateway.pinata.cloud/ipfs/',
+  'https://ipfs.io/ipfs/',
+  'https://cloudflare-ipfs.com/ipfs/'
+];
+
+function getImageUrl(ipfsHash, gatewayIndex = 0) {
+  return `${gateways[gatewayIndex]}${ipfsHash}`;
+}
+
+// Fallback to next gateway on error
+<img 
+  src={getImageUrl(petition.imageHash)}
+  onError={(e) => {
+    e.target.src = getImageUrl(petition.imageHash, 1);
+  }}
+  alt={petition.title}
+/>
+```
+
+### Network Issues
+
+**MetaMask Network Not Detected:**
+
+```javascript
+// Add Lisk Sepolia programmatically
+async function addLiskSepoliaNetwork() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId: '0x106A', // 4202 in hex
+        chainName: 'Lisk Sepolia',
+        nativeCurrency: {
+          name: 'Ethereum',
+          symbol: 'ETH',
+          decimals: 18
+        },
+        rpcUrls: ['https://rpc.sepolia-api.lisk.com'],
+        blockExplorerUrls: ['https://sepolia-blockscout.lisk.com']
+      }]
+    });
+  } catch (error) {
+    console.error('Error adding network:', error);
+  }
+}
+```
+
+### Contract Verification Issues
+
+**Blockscout Verification Failed:**
+
+Jika verifikasi otomatis gagal, lakukan manual verification:
+
+1. Buka Blockscout: https://sepolia-blockscout.lisk.com
+2. Cari contract address
+3. Klik tab "Code"
+4. Klik "Verify & Publish"
+5. Pilih compiler version: 0.8.30
+6. Pilih optimization: Yes, 200 runs
+7. Paste source code
+8. Submit
+
+### Gas Estimation Failed
+
+```javascript
+// Manual gas limit
+const tx = await contract.functionName(args, {
+  gasLimit: 500000 // Set manual gas limit
+});
+```
+
+### Event Listening Issues
+
+```javascript
+// Use polling instead of WebSocket if events not received
+const provider = new ethers.JsonRpcProvider(
+  'https://rpc.sepolia-api.lisk.com',
+  {
+    polling: true,
+    pollingInterval: 4000 // 4 seconds
+  }
+);
+```
+
+---
+
+## Testing Checklist
+
+### Pre-Deployment Testing
+
+- [ ] Compile all contracts without errors
+- [ ] Run Hardhat tests for all functions
+- [ ] Test on local hardhat network
+- [ ] Verify constructor parameters
+- [ ] Check all require statements
+- [ ] Test edge cases
+
+### Post-Deployment Testing
+
+- [ ] Verify all contract addresses saved
+- [ ] Test SBT minting
+- [ ] Verify CampaignToken received after SBT mint
+- [ ] Test petition creation with token (free)
+- [ ] Test petition creation with ETH
+- [ ] Test signature functionality
+- [ ] Verify creator cannot sign own petition
+- [ ] Test boost functionality
+- [ ] Verify boost priority system
+- [ ] Test multiple users interaction
+- [ ] Check event emissions
+- [ ] Verify contract connections
+
+### Frontend Testing
+
+- [ ] Wallet connection works
+- [ ] Network switching works
+- [ ] SBT minting UI works
+- [ ] Petition creation form works
+- [ ] Image upload to IPFS works
+- [ ] Petition list displays correctly
+- [ ] Sorting by boost priority works
+- [ ] Signature button works
+- [ ] Boost button works (creator only)
+- [ ] Transaction pending states
+- [ ] Success/error messages
+- [ ] Responsive design
+
+### Backend Testing (if applicable)
+
+- [ ] API endpoints respond correctly
+- [ ] Event listeners working
+- [ ] Database indexing works
+- [ ] Historical data sync
+- [ ] Error handling
+- [ ] Rate limiting
+- [ ] CORS configuration
+
+---
+
+## Performance Optimization
+
+### Frontend Optimization
+
+**1. Caching Contract Calls:**
+
+```javascript
+import { useQuery } from '@tanstack/react-query';
+
+function usePetitionData(petitionId) {
+  return useQuery({
+    queryKey: ['petition', petitionId],
+    queryFn: () => getPetition(petitionId),
+    staleTime: 30000, // 30 seconds
+    cacheTime: 300000 // 5 minutes
+  });
+}
+```
+
+**2. Batch Contract Calls:**
+
+```javascript
+import { multicall } from '@wagmi/core';
+
+async function batchGetPetitions(ids) {
+  const calls = ids.map(id => ({
+    address: CONTRACTS.PetitionPlatform.address,
+    abi: CONTRACTS.PetitionPlatform.abi,
+    functionName: 'getPetition',
+    args: [id]
+  }));
+  
+  return await multicall({ contracts: calls });
+}
+```
+
+**3. Lazy Loading:**
+
+```javascript
+// Lazy load components
+const CreatePetition = lazy(() => import('./pages/CreatePetition'));
+const PetitionDetail = lazy(() => import('./pages/PetitionDetail'));
+```
+
+### Backend Optimization
+
+**1. Redis Caching:**
+
+```javascript
+const redis = require('redis');
+const client = redis.createClient();
+
+async function getCachedPetitions() {
+  const cached = await client.get('petitions:all');
+  if (cached) return JSON.parse(cached);
+  
+  const petitions = await fetchPetitionsFromBlockchain();
+  await client.setEx('petitions:all', 60, JSON.stringify(petitions));
+  return petitions;
+}
+```
+
+**2. Database Indexing:**
+
+```javascript
+// In MongoDB schema
+PetitionSchema.index({ petitionId: 1 });
+PetitionSchema.index({ creator: 1 });
+PetitionSchema.index({ boostEndTime: -1 });
+PetitionSchema.index({ boostPriority: -1 });
+```
+
+---
+
+## Security Best Practices
+
+### Smart Contract Security
+
+1. **Access Control:** Semua sensitive functions sudah dilindungi dengan onlyOwner atau internal checks
+2. **Reentrancy Protection:** Semua payable functions menggunakan nonReentrant modifier
+3. **Input Validation:** Semua inputs divalidasi dengan require statements
+4. **Integer Overflow:** Solidity 0.8+ sudah memiliki built-in overflow protection
+5. **External Calls:** Menggunakan low-level call dengan proper error handling
+
+### Frontend Security
+
+**1. Validate User Input:**
+
+```javascript
+function validatePetitionInput(title, description) {
+  if (!title || title.trim().length === 0) {
+    throw new Error('Title cannot be empty');
+  }
+  if (title.length > 200) {
+    throw new Error('Title too long (max 200 characters)');
+  }
+  if (!description || description.trim().length === 0) {
+    throw new Error('Description cannot be empty');
+  }
+  if (description.length > 5000) {
+    throw new Error('Description too long (max 5000 characters)');
+  }
+}
+```
+
+**2. Sanitize IPFS Hash:**
+
+```javascript
+function validateIPFSHash(hash) {
+  const ipfsRegex = /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
+  if (!ipfsRegex.test(hash)) {
+    throw new Error('Invalid IPFS hash format');
+  }
+  return hash;
+}
+```
+
+**3. Check Transaction Before Sending:**
+
+```javascript
+async function safeCreatePetition(title, description, imageHash) {
+  try {
+    // Validate inputs
+    validatePetitionInput(title, description);
+    const validHash = validateIPFSHash(imageHash);
+    
+    // Check membership
+    const isMember = await checkMembership(userAddress);
+    if (!isMember) {
+      throw new Error('You must be a member to create petitions');
+    }
+    
+    // Estimate gas
+    const gasEstimate = await contract.estimateGas.createPetition(
+      title, description, validHash
+    );
+    
+    // Send transaction with extra gas buffer
+    const tx = await contract.createPetition(
+      title, description, validHash,
+      { gasLimit: gasEstimate * 120n / 100n } // 20% buffer
+    );
+    
+    return await tx.wait();
+  } catch (error) {
+    console.error('Transaction failed:', error);
+    throw error;
+  }
+}
+```
+
+### Backend Security
+
+**1. Rate Limiting:**
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/', limiter);
+```
+
+**2. Input Sanitization:**
+
+```javascript
+const validator = require('validator');
+
+app.get('/api/member/:address', async (req, res) => {
+  const { address } = req.params;
+  
+  // Validate Ethereum address
+  if (!validator.isEthereumAddress(address)) {
+    return res.status(400).json({ error: 'Invalid Ethereum address' });
+  }
+  
+  // Continue processing
+});
+```
+
+**3. Environment Variables:**
+
+```bash
+# Never commit .env file
+# Use proper secrets management in production
+
+PRIVATE_KEY=your_private_key
+LISK_SEPOLIA_RPC=https://rpc.sepolia-api.lisk.com
+PINATA_JWT=your_pinata_jwt
+DATABASE_URL=mongodb://localhost:27017/petition
+```
+
+---
+
+## Deployment to Production
+
+### Pre-Production Checklist
+
+- [ ] All contracts audited (if budget allows)
+- [ ] Comprehensive testing completed
+- [ ] Gas optimization done
+- [ ] Documentation complete
+- [ ] Frontend build optimized
+- [ ] Backend secured and tested
+- [ ] Database backed up
+- [ ] Monitoring setup
+- [ ] Error tracking configured
+- [ ] Rate limiting implemented
+
+### Mainnet Deployment Steps
+
+**1. Update Network Configuration:**
+
+```javascript
+// hardhat.config.js
+module.exports = {
+  networks: {
+    liskMainnet: {
+      url: process.env.LISK_MAINNET_RPC,
+      accounts: [process.env.MAINNET_PRIVATE_KEY],
+      chainId: 1135 // Lisk Mainnet Chain ID
+    }
+  }
+};
+```
+
+**2. Deploy to Mainnet:**
+
+```bash
+# Double check everything before deploying
+npx hardhat run scripts/deploy.js --network liskMainnet
+
+# Verify contracts
+npx hardhat verify --network liskMainnet CONTRACT_ADDRESS [CONSTRUCTOR_ARGS]
+```
+
+**3. Update Frontend Configuration:**
+
+```javascript
+// config/contracts.js
+export const CONTRACTS = {
+  CampaignToken: {
+    address: "MAINNET_CAMPAIGN_TOKEN_ADDRESS",
+    abi: CampaignTokenABI
+  },
+  SoulboundMember: {
+    address: "MAINNET_SOULBOUND_MEMBER_ADDRESS",
+    abi: SoulboundMemberABI
+  },
+  PetitionPlatform: {
+    address: "MAINNET_PETITION_PLATFORM_ADDRESS",
+    abi: PetitionPlatformABI
+  }
+};
+
+export const LISK_MAINNET = {
+  id: 1135,
+  name: "Lisk",
+  network: "lisk",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ethereum",
+    symbol: "ETH"
+  },
+  rpcUrls: {
+    default: { http: ["https://rpc.api.lisk.com"] },
+    public: { http: ["https://rpc.api.lisk.com"] }
+  },
+  blockExplorers: {
+    default: {
+      name: "Blockscout",
+      url: "https://blockscout.lisk.com"
+    }
+  }
+};
+```
+
+**4. Build and Deploy Frontend:**
+
+```bash
+# Build production bundle
+npm run build
+
+# Deploy to hosting (Vercel example)
+vercel --prod
+
+# Or deploy to IPFS
+npm install -g ipfs-deploy
+ipd build/
+```
+
+**5. Deploy Backend:**
+
+```bash
+# Using PM2 for Node.js
+npm install -g pm2
+pm2 start server.js --name petition-api
+pm2 save
+pm2 startup
+
+# Or using Docker
+docker build -t petition-backend .
+docker run -d -p 3001:3001 petition-backend
+```
+
+### Post-Deployment
+
+**1. Monitor Contracts:**
+
+```javascript
+// Setup monitoring service
+const { Defender } = require('@openzeppelin/defender-sdk');
+
+const client = new Defender({
+  apiKey: process.env.DEFENDER_API_KEY,
+  apiSecret: process.env.DEFENDER_API_SECRET
+});
+
+// Monitor for suspicious activity
+await client.monitor.create({
+  name: 'Petition Platform Monitor',
+  addresses: [
+    CONTRACTS.PetitionPlatform.address
+  ],
+  abi: PetitionPlatformABI,
+  paused: false,
+  alertThreshold: {
+    amount: 1,
+    windowSeconds: 3600
+  },
+  notificationChannels: ['email']
+});
+```
+
+**2. Setup Analytics:**
+
+```javascript
+// Google Analytics or similar
+import ReactGA from 'react-ga4';
+
+ReactGA.initialize('YOUR_TRACKING_ID');
+
+// Track petition creation
+function trackPetitionCreated(petitionId) {
+  ReactGA.event({
+    category: 'Petition',
+    action: 'Created',
+    label: petitionId
+  });
+}
+
+// Track signatures
+function trackPetitionSigned(petitionId) {
+  ReactGA.event({
+    category: 'Petition',
+    action: 'Signed',
+    label: petitionId
+  });
+}
+```
+
+**3. Setup Error Tracking:**
+
+```javascript
+// Sentry for error tracking
+import * as Sentry from "@sentry/react";
+
+Sentry.init({
+  dsn: "YOUR_SENTRY_DSN",
+  integrations: [
+    new Sentry.BrowserTracing(),
+    new Sentry.Replay()
+  ],
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0
+});
+```
+
+---
+
+## Maintenance and Updates
+
+### Regular Maintenance Tasks
+
+**Daily:**
+- Monitor transaction success rates
+- Check error logs
+- Verify event indexing working
+- Monitor gas prices
+
+**Weekly:**
+- Review user feedback
+- Check contract balance
+- Verify backup systems
+- Update documentation if needed
+
+**Monthly:**
+- Security audit review
+- Performance optimization review
+- User analytics review
+- Database cleanup
+
+### Contract Upgrade Strategy
+
+Contracts ini tidak upgradeable by design untuk security. Jika perlu update:
+
+**Option 1: Deploy New Version**
+```javascript
+// Deploy new contracts
+// Migrate data if needed
+// Update frontend to use new addresses
+// Keep old contracts for historical data
+```
+
+**Option 2: Add New Features via Additional Contracts**
+```javascript
+// Deploy supplementary contract
+// Integrate with existing contracts
+// No migration needed
+```
+
+### Database Backup
+
+```bash
+# MongoDB backup
+mongodump --db petition --out /backup/$(date +%Y%m%d)
+
+# Automated daily backup
+0 2 * * * mongodump --db petition --out /backup/$(date +\%Y\%m\%d)
+```
+
+---
+
+## API Documentation
+
+### REST API Endpoints
+
+**Base URL:** `https://api.yourplatform.com`
+
+#### Member Endpoints
+
+**Check Membership**
+```
+GET /api/member/:address
+
+Response:
+{
+  "isMember": true
+}
+```
+
+#### Petition Endpoints
+
+**Get All Petitions**
+```
+GET /api/petitions
+
+Response:
+{
+  "petitions": [
+    {
+      "id": "0",
+      "title": "Stop Deforestation",
+      "description": "We need to protect...",
+      "imageHash": "QmXxxx...",
+      "creator": "0x1234...",
+      "createdAt": 1699999999,
+      "boostEndTime": 1700604799,
+      "boostPriority": 5,
+      "signatureCount": 142
+    }
+  ]
+}
+```
+
+**Get Single Petition**
+```
+GET /api/petitions/:id
+
+Response:
+{
+  "id": "0",
+  "title": "Stop Deforestation",
+  "description": "We need to protect...",
+  "imageHash": "QmXxxx...",
+  "creator": "0x1234...",
+  "createdAt": 1699999999,
+  "boostEndTime": 1700604799,
+  "boostPriority": 5,
+  "signatureCount": 142
+}
+```
+
+**Check if User Signed**
+```
+GET /api/petitions/:id/signed/:address
+
+Response:
+{
+  "hasSigned": true
+}
+```
+
+**Get Active Boosted Petitions**
+```
+GET /api/petitions/boosted/active
+
+Response:
+{
+  "petitions": [...]
+}
+```
+
+**Get Platform Statistics**
+```
+GET /api/stats
+
+Response:
+{
+  "totalPetitions": 45,
+  "totalMembers": 123
 }
 ```
 
 ---
 
-## 📝 Important Notes
+## Resources and References
 
-### 1. Gas Optimization
-- Sign petition gratis (no gas dari user, hanya network fee)
-- Calculate fee on-chain lebih akurat (gunakan `calculateCampaignFee`)
-- Batch operations bisa save gas (future enhancement)
+### Official Documentation
 
-### 2. Security
-- ReentrancyGuard aktif di semua fungsi bayar
-- Access control dengan Ownable
-- Validasi input di semua function
-- Token burn/mint protected dengan authorization
+- **Lisk Documentation:** https://docs.lisk.com
+- **Lisk Sepolia Testnet:** https://sepolia-api.lisk.com
+- **OpenZeppelin Contracts:** https://docs.openzeppelin.com/contracts
+- **Hardhat:** https://hardhat.org/docs
+- **Ethers.js:** https://docs.ethers.org
+- **Wagmi:** https://wagmi.sh
+- **Pinata IPFS:** https://docs.pinata.cloud
 
-### 3. Scalability
-- Pricing config bisa diubah owner: `setPricingConfig()`
-- Reward threshold bisa diubah: `setRewardThreshold()`
-- Token duration bisa diubah: `setDefaultTokenDuration()`
-- Mint price NFT bisa diubah: `setMintPrice()`
+### Community Resources
 
-### 4. Economics
-- Base fee: murah untuk encourage short campaigns
-- Additional fee: fair pricing untuk long campaigns
-- Reward system: incentivize active creators
-- Token utility: real value (bisa hemat biaya)
+- **Lisk Discord:** https://discord.gg/lisk
+- **Lisk Forum:** https://forum.lisk.com
+- **GitHub Repository:** [Your repo URL]
 
----
+### Support
 
-## 🚀 Deployment to Testnet
-
-### Sepolia Testnet Example
-
-1. **Get Sepolia ETH**:
-   - https://sepoliafaucet.com
-   - https://faucet.quicknode.com/ethereum/sepolia
-
-2. **Deploy Steps**:
-   ```
-   1. Deploy CampaignToken
-   2. Deploy DAOMembership (input CampaignToken address)
-   3. Deploy PetitionPlatform (input DAO & Token addresses)
-   4. Setup Connections:
-      - CampaignToken.setPetitionContract()
-      - CampaignToken.setDAOMembershipContract()
-      - DAOMembership.setPetitionContract()
-   ```
-
-3. **Verify Contracts** on Etherscan:
-   - Go to Etherscan Sepolia
-   - Find your contract
-   - Click "Verify and Publish"
-   - Select compiler 0.8.30
-   - Paste contract code
-   - Add constructor arguments
+For issues and questions:
+- GitHub Issues: [Your repo]/issues
+- Email: support@yourplatform.com
+- Discord: [Your Discord server]
 
 ---
 
-## 🎓 Learning Resources
+## Glossary
 
-### Smart Contract Concepts:
-- **ERC-721 (NFT)**: Membership system
-- **ERC-20 (Token)**: Utility token for free campaigns
-- **Dynamic Pricing**: On-chain calculation based on parameters
-- **Reward System**: Automated token minting based on activity
-- **Access Control**: Ownable pattern for admin functions
-- **Reentrancy Protection**: Security best practice
+**SBT (Soulbound Token):** Non-transferable NFT yang berfungsi sebagai identitas digital unik
 
-### Web3 Integration:
-- **IPFS**: Decentralized image storage
-- **Events**: Tracking on-chain activities
-- **Gas Optimization**: Efficient storage and calculations
-- **Frontend**: React + ethers.js examples
+**CampaignToken:** ERC-20 token yang digunakan untuk membuat petisi gratis
 
----
+**Petition:** Campaign atau petisi digital yang dapat ditandatangani
 
-## 🔮 Future Enhancements
+**Boost:** Fitur untuk meningkatkan visibilitas petisi dengan membayar fee
 
-### Potential Features:
-1. **Tiered Pricing**: Discount untuk bulk duration (misal 90 hari lebih murah per hari)
-2. **NFT Levels**: Different NFT tiers dengan benefit berbeda
-3. **Petition Categories**: Tag dan filter by category
-4. **Voting Weight**: NFT holders dapat voting power lebih besar
-5. **Deadline Extension**: Creator bisa extend duration dengan bayar tambahan
-6. **Analytics Dashboard**: Track petition performance
-7. **Social Features**: Comment, share, trending petitions
-8. **Multi-sig Close**: Require multiple signatures to close important petitions
+**Boost Priority:** Angka yang menentukan urutan petisi yang di-boost (semakin tinggi semakin atas)
+
+**Gasless Transaction:** Transaksi blockchain tanpa biaya gas dari user (ditanggung platform via Panna SDK)
+
+**IPFS:** InterPlanetary File System, storage terdesentralisasi untuk menyimpan gambar
+
+**Signature:** Tanda tangan digital pada petisi (mint ERC-1155 token)
 
 ---
 
-## 📞 Support & Community
+## FAQ
 
-### Debugging Checklist:
-- ✅ Compiler version: 0.8.30
-- ✅ All contracts compiled without errors
-- ✅ Deployment order correct (Token → DAO → Platform)
-- ✅ All connections setup (3 function calls)
-- ✅ Gas limit sufficient for transactions
-- ✅ VALUE set correctly for payable functions
+**Q: Apakah user harus bayar gas fee?**
+A: Tidak, dengan integrasi Panna SDK semua transaksi gasless untuk user.
 
-### Common Errors & Solutions:
+**Q: Berapa biaya membuat petisi?**
+A: Petisi pertama gratis (menggunakan CampaignToken). Petisi selanjutnya 0.002 ETH.
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| "Not authorized" | Connections not setup | Run all setup functions in Step 4 |
-| "Not a DAO member" | No NFT | Mint NFT first with mintMembership() |
-| "Insufficient fee" | Wrong VALUE | Use calculateCampaignFee() first |
-| "Already signed" | Duplicate sign | Each wallet can sign once only |
-| "Duration must be 1-365 days" | Invalid duration | Input 1-365 for duration |
-| "Token burn failed" | Insufficient token | Check token balance first |
+**Q: Apakah SBT bisa ditransfer atau dijual?**
+A: Tidak, SBT adalah token non-transferable dan permanent.
 
----
+**Q: Berapa lama durasi boost?**
+A: Boost berlaku selama 7 hari dengan biaya 0.001 ETH.
 
-## ✅ Final Checklist Before Production
+**Q: Apakah creator bisa tanda tangan petisi sendiri?**
+A: Tidak, creator tidak bisa tanda tangan petisi yang mereka buat sendiri.
 
-### Smart Contract:
-- [ ] All contracts compiled successfully
-- [ ] Deployment tested on testnet
-- [ ] All functions tested (create, sign, close, withdraw)
-- [ ] Pricing calculation verified
-- [ ] Reward system working correctly
-- [ ] Access control verified (owner functions)
-- [ ] Security audit completed (recommended)
-- [ ] Contracts verified on Etherscan
+**Q: Bagaimana cara mendapat CampaignToken gratis?**
+A: Otomatis dapat 1 token saat mint SBT, dan setiap 5 petisi berbayar dapat 1 token reward.
 
-### Frontend:
-- [ ] Web3 connection working
-- [ ] Wallet integration (MetaMask, etc)
-- [ ] IPFS upload functional
-- [ ] Pricing calculator accurate
-- [ ] Transaction feedback (loading, success, error)
-- [ ] Mobile responsive design
-- [ ] Error handling complete
+**Q: Apakah bisa mint SBT lebih dari sekali?**
+A: Tidak, satu wallet hanya bisa mint SBT satu kali.
 
-### Documentation:
-- [ ] User guide available
-- [ ] API documentation complete
-- [ ] FAQ updated
-- [ ] Support channels ready
+**Q: Apakah bisa tanda tangan petisi lebih dari sekali?**
+A: Tidak, satu wallet hanya bisa tanda tangan satu kali per petisi.
+
+**Q: Apa yang terjadi setelah boost berakhir?**
+A: Petisi kembali ke urutan pembuatan (berdasarkan createdAt).
+
+**Q: Bagaimana urutan petisi yang di-boost?**
+A: Diurutkan berdasarkan boostPriority (siapa boost lebih dulu, priority lebih tinggi).
 
 ---
 
-**Happy Building! 🚀**
+## Changelog
 
-*Platform ini dirancang untuk memberikan transparency, fairness, dan incentive yang tepat untuk ecosystem petition terdesentralisasi. Dengan dynamic pricing, creator bisa flexible memilih durasi campaign sesuai kebutuhan dan budget.*
+### Version 1.0.0 (Initial Release)
+- Deployment ketiga smart contract
+- Frontend web application
+- Backend API server
+- IPFS integration via Pinata
+- Gasless transaction via Panna SDK
+
+### Future Roadmap
+
+**Version 1.1.0**
+- Mobile application (React Native)
+- Push notifications for petition updates
+- Social sharing features
+- Advanced analytics dashboard
+
+**Version 1.2.0**
+- Multi-language support
+- DAO governance for platform decisions
+- Token staking mechanism
+- Petition categories and filtering
+
+**Version 2.0.0**
+- Cross-chain support
+- Integration with other platforms
+- Advanced verification system
+- Enterprise features
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+---
+
+## Acknowledgments
+
+- OpenZeppelin for secure smart contract libraries
+- Lisk team for blockchain infrastructure
+- Pinata for IPFS hosting
+- Community contributors
+
+---
+
+**Last Updated:** November 2025
+
+**Document Version:** 1.0.0
+
+**Contact:** support@yourplatform.com

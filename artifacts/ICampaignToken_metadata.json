@@ -25,19 +25,22 @@
 			}
 		],
 		"devdoc": {
+			"details": "Token ini tidak dapat ditransfer setelah di-mint (soulbound)",
 			"kind": "dev",
 			"methods": {},
+			"title": "SoulboundMember",
 			"version": 1
 		},
 		"userdoc": {
 			"kind": "user",
 			"methods": {},
+			"notice": "Implementasi SBT (Non-Transferable ERC-721)",
 			"version": 1
 		}
 	},
 	"settings": {
 		"compilationTarget": {
-			"contracts/DAOMembership.sol": "ICampaignToken"
+			"contracts/SoulboundMember.sol": "ICampaignToken"
 		},
 		"evmVersion": "prague",
 		"libraries": {},
@@ -179,12 +182,12 @@
 				"dweb:/ipfs/QmVUSvooZKEdEdap619tcJjTLcAuH6QBdZqAzWwnAXZAWJ"
 			]
 		},
-		"contracts/DAOMembership.sol": {
-			"keccak256": "0xa41e3e585d8fc33bf85e3319078d9c016b15a1e25a1738048c1018af67f4e464",
+		"contracts/SoulboundMember.sol": {
+			"keccak256": "0x99e1f470986bea13cc56d0899f737c9f03531c4cb61f06747fc48a91ae3968e4",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://7bbb79f95638cecb49391ac465d1721089632eebf4bb52a6551422827b9da035",
-				"dweb:/ipfs/QmS4g3m4jd8j3AJpJ39imQSQfeQrJcPLLspBLuQiXdP9k1"
+				"bzz-raw://2c2da5f923d7ccccf281dfa4ef734c158de4ee47c1e3362ba407405038d21a85",
+				"dweb:/ipfs/QmQ9pLihPFPGPv26VDrccVFCEuYEJ81auwontX81o62YZa"
 			]
 		}
 	},
