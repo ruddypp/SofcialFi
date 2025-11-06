@@ -1,0 +1,21 @@
+{
+  "network": "liskSepolia",
+  "chainId": 4202,
+  "deployer": "0xAE43F043005e3f750Dbfb0a7D712fEC7e580b7c3",
+  "timestamp": "2025-11-06T04:39:33.086Z",
+  "contracts": {
+    "CampaignToken": "0x7D3e8350c2a87b9d61816975CFe0cd18CC4e7B30",
+    "SoulboundMember": "0x9F090D06638f7d32915065d51BE2E737b8E6bDaB",
+    "PetitionPlatform": "0x4Ec2EEc9D8071DBB9e4ba332e93d6624fF614D8b"
+  },
+  "transactionHashes": {
+    "CampaignToken": "0xd916aebf92805b97b87bbce3a0282b331ab125241ab0aca9e00331b886c483e8",
+    "SoulboundMember": "0xd095d843611b23da2b35c76ef5b2738e146ec16b7e45e8f105a2a715b07f0374",
+    "PetitionPlatform": "0x64a61f056a022cb76ff36bb35ed63f4616cb86a560931b684265c31866e0fd9b"
+  },
+  "explorerUrls": {
+    "CampaignToken": "https://sepolia-blockscout.lisk.com/address/0x7D3e8350c2a87b9d61816975CFe0cd18CC4e7B30",
+    "SoulboundMember": "https://sepolia-blockscout.lisk.com/address/0x9F090D06638f7d32915065d51BE2E737b8E6bDaB",
+    "PetitionPlatform": "https://sepolia-blockscout.lisk.com/address/0x4Ec2EEc9D8071DBB9e4ba332e93d6624fF614D8b"
+  }
+}

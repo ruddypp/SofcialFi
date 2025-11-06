@@ -1,0 +1,835 @@
+project_name: "Decentralized Petition Platform"
+description: "Web3 petition platform with Soulbound Token (SBT) verification on Lisk Sepolia testnet"
+
+# ============================================
+# TECH STACK & DEPENDENCIES
+# ============================================
+tech_stack:
+  framework: "Next.js 14+ (App Router)"
+  language: "TypeScript"
+  styling: "Tailwind CSS"
+  web3:
+    - "wagmi ^2.x"
+    - "viem ^2.x"
+    - "@tanstack/react-query"
+    - "@rainbow-me/rainbowkit"
+    - "ethers ^6.x"
+  ui_library: "shadcn/ui (optional for modals, dialogs)"
+  icons: "lucide-react"
+
+# ============================================
+# DESIGN SYSTEM
+# ============================================
+design:
+  theme: "Dark Mode (Glassmorphism)"
+  style_guide:
+    primary_color: "#6366f1" # Indigo
+    secondary_color: "#8b5cf6" # Purple
+    accent_color: "#ec4899" # Pink
+    success_color: "#10b981" # Green
+    warning_color: "#f59e0b" # Amber
+    background: "#0f172a" # Slate-900
+    surface: "rgba(30, 41, 59, 0.7)" # Glassmorphic card
+    text_primary: "#f1f5f9"
+    text_secondary: "#94a3b8"
+  
+  glassmorphism:
+    backdrop_blur: "blur(16px)"
+    background: "rgba(30, 41, 59, 0.7)"
+    border: "1px solid rgba(148, 163, 184, 0.2)"
+    shadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)"
+  
+  animations:
+    - "Smooth fade-in on page load"
+    - "Hover effects with scale and glow"
+    - "Slide transitions for petition cards"
+    - "Loading skeleton screens"
+    - "Success/error toast notifications"
+    - "Smooth scroll behavior"
+
+# ============================================
+# BLOCKCHAIN CONFIGURATION
+# ============================================
+blockchain:
+  network: "Lisk Sepolia Testnet"
+  chain_id: 4202
+  rpc_url: "https://rpc.sepolia-api.lisk.com"
+  block_explorer: "https://sepolia-blockscout.lisk.com"
+  
+  gasless_transactions:
+    enabled: true
+    provider: "Panna SDK (Lisk Testnet)"
+    note: "All user transactions are gasless - users don't pay gas fees"
+  
+  contracts:
+    # NOTE: Contract addresses will be imported from contracts.json
+    # Generated from: artifacts/contracts/testnet/contracts.json
+    campaign_token:
+      name: "CampaignToken"
+      type: "ERC-20"
+      symbol: "CAMP"
+      decimals: 18
+    
+    soulbound_member:
+      name: "SoulboundMember"
+      type: "ERC-721 (Soulbound)"
+      description: "Non-transferable membership NFT"
+    
+    petition_platform:
+      name: "PetitionPlatform"
+      type: "ERC-1155"
+      description: "Core petition logic contract"
+
+# ============================================
+# CORE FEATURES & USER FLOW
+# ============================================
+features:
+  
+  # PRIORITY 1: First-time User Flow
+  onboarding:
+    steps:
+      - step: 1
+        action: "User lands on homepage"
+        ui: "Hero section with CTA 'Connect Wallet'"
+      
+      - step: 2
+        action: "Connect wallet (RainbowKit)"
+        validation: "Check if wallet has SBT"
+      
+      - step: 3
+        action: "If no SBT → Show 'Mint Membership' modal"
+        ui: "Glassmorphic modal explaining SBT benefits"
+        cta: "Mint My Membership (Free + Gasless)"
+      
+      - step: 4
+        action: "After minting → Auto receive 1 CAMP token"
+        ui: "Success animation + show token balance"
+        next: "Redirect to dashboard"
+  
+  # PRIORITY 2: Mint Soulbound Member (SBT)
+  mint_sbt:
+    title: "Become a Verified Member"
+    description: |
+      Get your unique Soulbound Token (SBT) to participate in petitions.
+      This is a one-time, non-transferable identity proof.
+    
+    benefits:
+      - "✓ Create petitions"
+      - "✓ Sign petitions"
+      - "✓ Get 1 free CAMP token (worth 1 free petition)"
+      - "✓ Unique identity (one person, one vote)"
+    
+    ui_components:
+      - component: "MintSBTCard"
+        location: "Dashboard (if user has no SBT)"
+        design: "Large glassmorphic card with pulsing glow"
+        button: "Mint Membership (Gasless)"
+        states:
+          - "Not minted (show CTA)"
+          - "Minting... (loading animation)"
+          - "Success (show SBT badge + token balance)"
+  
+  # PRIORITY 3: Create Petition
+  create_petition:
+    requirements:
+      - "User must have SBT"
+      - "User can choose payment method"
+    
+    payment_options:
+      option_1:
+        method: "CAMP Token"
+        cost: "1 CAMP token (burned)"
+        condition: "User must have ≥1 CAMP token"
+        gasless: true
+      
+      option_2:
+        method: "ETH"
+        cost: "0.002 ETH (baseCampaignFee)"
+        gasless: true
+        reward: "Every 5 paid petitions → Get 1 CAMP token"
+    
+    form_fields:
+      - field: "title"
+        type: "text"
+        required: true
+        max_length: 100
+        placeholder: "e.g., Stop Deforestation in Amazon"
+      
+      - field: "description"
+        type: "textarea"
+        required: true
+        max_length: 2000
+        placeholder: "Explain your petition in detail..."
+      
+      - field: "image"
+        type: "file_upload"
+        required: true
+        accept: "image/*"
+        upload_to: "Pinata IPFS"
+        note: "Image will be uploaded to IPFS and hash saved on-chain"
+      
+      - field: "payment_method"
+        type: "radio"
+        options:
+          - "Use CAMP Token (Free)"
+          - "Pay with ETH (0.002 ETH)"
+        default: "Use CAMP Token (if available)"
+    
+    ui_components:
+      - component: "CreatePetitionForm"
+        location: "Dashboard → 'Create Petition' button"
+        design: "Full-screen modal with glassmorphic background"
+        features:
+          - "Image preview"
+          - "Character counter"
+          - "Payment method selector (show token balance)"
+          - "Estimated gas (always $0 - gasless)"
+          - "Submit button with loading state"
+  
+  # PRIORITY 4: Browse & Search Petitions
+  petition_list:
+    sorting_logic:
+      priority_1:
+        condition: "Petition is boosted (boostEndTime > current_time)"
+        sort_by: "boostPriority DESC (highest = newest boost)"
+        ui_indicator: "🚀 BOOSTED badge + glow effect"
+      
+      priority_2:
+        condition: "Petition not boosted or boost expired"
+        sort_by: "createdAt ASC (oldest first, then newest)"
+    
+    display_options:
+      - "Grid view (default, 3 columns on desktop)"
+      - "List view (compact)"
+      - "Filter by: All | Boosted | Recent | Most Signed"
+      - "Search by title/description"
+    
+    petition_card:
+      design: "Glassmorphic card with hover effect"
+      elements:
+        - "🚀 Boosted badge (if active)"
+        - "Petition image (IPFS)"
+        - "Title (truncated to 2 lines)"
+        - "Description (truncated to 3 lines)"
+        - "Creator address (shortened: 0x1234...5678)"
+        - "Signature count (e.g., '1,234 signatures')"
+        - "Time remaining for boost (if boosted)"
+        - "Action buttons: 'Sign' | 'View Details'"
+  
+  # PRIORITY 5: Sign Petition
+  sign_petition:
+    requirements:
+      - "User must have SBT"
+      - "User cannot sign own petition"
+      - "User can only sign once per petition"
+      - "Gasless transaction"
+    
+    user_flow:
+      - step: 1
+        action: "Click 'Sign' button on petition card"
+        validation:
+          - "Check if user is creator (reject if true)"
+          - "Check if user already signed (reject if true)"
+      
+      - step: 2
+        action: "Show confirmation modal"
+        ui: "Modal with petition details + 'Confirm Signature' button"
+      
+      - step: 3
+        action: "Execute signPetition()"
+        blockchain: "Mint ERC-1155 token as proof of signature"
+        result: "Signature count +1"
+      
+      - step: 4
+        action: "Show success message"
+        ui: "Toast notification + update signature count in real-time"
+    
+    restrictions:
+      creator_cannot_sign:
+        error_message: "You cannot sign your own petition"
+        ui: "'Sign' button disabled for creator"
+      
+      already_signed:
+        error_message: "You already signed this petition"
+        ui: "'Signed ✓' badge instead of button"
+  
+  # PRIORITY 6: Boost Petition
+  boost_petition:
+    requirements:
+      - "Only creator can boost own petition"
+      - "Cost: 0.001 ETH (boostingFee)"
+      - "Duration: 7 days"
+      - "Gasless for user (platform pays gas)"
+    
+    boost_mechanics:
+      priority_system: "First-come-first-served (boostPriorityCounter)"
+      effect: "Petition moves to top of list immediately"
+      duration: "7 days from boost time"
+      expiry: "After 7 days, petition returns to original position (sorted by createdAt)"
+      
+      multiple_boosts:
+        rule: "If multiple petitions boosted, highest boostPriority = top"
+        example: |
+          Petition A boosted at 10:00 (priority 1)
+          Petition B boosted at 10:05 (priority 2) → B is above A
+          Petition C boosted at 10:10 (priority 3) → C is above B and A
+    
+    ui_components:
+      - component: "BoostButton"
+        visibility: "Only visible to petition creator"
+        location: "Petition detail page"
+        design: "Prominent button with rocket icon 🚀"
+        states:
+          - "Not boosted: 'Boost for 7 days (0.001 ETH)'"
+          - "Already boosted: 'Boosted until [date]' (disabled)"
+      
+      - component: "BoostConfirmModal"
+        ui: "Show boost cost + duration + preview of top position"
+        cta: "Confirm Boost"
+
+# ============================================
+# PAGE STRUCTURE
+# ============================================
+pages:
+  
+  # 1. Landing Page (/)
+  landing_page:
+    sections:
+      hero:
+        headline: "Your Voice Matters On-Chain"
+        subheadline: "Create and sign petitions with verified identity. One person, one vote."
+        cta_primary: "Get Started (Connect Wallet)"
+        cta_secondary: "Explore Petitions"
+        background: "Animated gradient with glassmorphic overlay"
+        illustration: "3D blockchain network or voting hands"
+      
+      how_it_works:
+        title: "How It Works"
+        steps:
+          - step: 1
+            icon: "🔐"
+            title: "Mint Your Identity"
+            description: "Get a unique Soulbound Token (SBT) - non-transferable proof of membership"
+          
+          - step: 2
+            icon: "📝"
+            title: "Create Petitions"
+            description: "Use your free CAMP token or pay with ETH to start a petition"
+          
+          - step: 3
+            icon: "✍️"
+            title: "Sign & Support"
+            description: "Sign petitions you care about - one signature per petition"
+          
+          - step: 4
+            icon: "🚀"
+            title: "Boost Visibility"
+            description: "Creators can boost their petitions to reach more people"
+      
+      features:
+        title: "Why Choose Us?"
+        cards:
+          - feature: "Verified Identity"
+            icon: "🛡️"
+            description: "Soulbound Tokens prevent fake accounts and ensure one person = one vote"
+          
+          - feature: "Gasless Transactions"
+            icon: "⚡"
+            description: "All actions are free - no gas fees for users (powered by Panna SDK)"
+          
+          - feature: "Transparent & Immutable"
+            icon: "🔍"
+            description: "All petitions and signatures stored on-chain - fully auditable"
+          
+          - feature: "Reward System"
+            icon: "🎁"
+            description: "Active creators earn CAMP tokens every 5 paid petitions"
+      
+      statistics:
+        title: "Platform Stats"
+        metrics:
+          - label: "Total Members"
+            source: "soulboundMember.totalSupply()"
+            icon: "👥"
+          
+          - label: "Active Petitions"
+            source: "petitionPlatform.getTotalPetitions()"
+            icon: "📋"
+          
+          - label: "Total Signatures"
+            source: "Sum of all petition.signatureCount"
+            icon: "✍️"
+          
+          - label: "Boosted Now"
+            source: "petitionPlatform.getActiveBoostedPetitions().length"
+            icon: "🚀"
+      
+      recent_petitions:
+        title: "Trending Petitions"
+        display: "Show top 6 petitions (boosted first, then by signatures)"
+        cta: "View All Petitions"
+      
+      footer:
+        links:
+          - "About"
+          - "How It Works"
+          - "FAQ"
+          - "GitHub"
+          - "Block Explorer"
+        social:
+          - "Twitter/X"
+          - "Discord"
+          - "Telegram"
+        network_info:
+          - "Lisk Sepolia Testnet"
+          - "Chain ID: 4202"
+  
+  # 2. Dashboard (/dashboard)
+  dashboard:
+    layout: "Two-column layout (sidebar + main content)"
+    
+    sidebar:
+      components:
+        - component: "UserProfile"
+          elements:
+            - "Wallet address (shortened)"
+            - "SBT status badge"
+            - "CAMP token balance"
+            - "Total petitions created"
+            - "Total petitions signed"
+        
+        - component: "QuickActions"
+          buttons:
+            - "Create Petition"
+            - "My Petitions"
+            - "Signed Petitions"
+    
+    main_content:
+      tabs:
+        - tab: "All Petitions"
+          default: true
+          content: "PetitionList component (sorted by boost + createdAt)"
+        
+        - tab: "Boosted"
+          content: "Filter to show only boosted petitions"
+        
+        - tab: "My Petitions"
+          content: "Show petitions created by current user"
+        
+        - tab: "My Signatures"
+          content: "Show petitions signed by current user"
+  
+  # 3. Petition Detail (/petition/[id])
+  petition_detail:
+    layout: "Single column, centered (max-width: 900px)"
+    
+    sections:
+      header:
+        elements:
+          - "🚀 BOOSTED badge (if active) + time remaining"
+          - "Petition image (full width, aspect-ratio: 16:9)"
+          - "Title (large, bold)"
+          - "Creator info (address + 'View on Explorer' link)"
+          - "Created date"
+      
+      content:
+        - "Full description (formatted text)"
+        - "IPFS link to image"
+      
+      stats:
+        display: "Horizontal cards row"
+        metrics:
+          - "Total Signatures"
+          - "Created At"
+          - "Boost Status (if applicable)"
+      
+      actions:
+        buttons:
+          - button: "Sign Petition"
+            visibility: "Show if user has SBT and hasn't signed"
+            disabled_if:
+              - "User is creator"
+              - "User already signed"
+          
+          - button: "Boost (0.001 ETH)"
+            visibility: "Only for petition creator"
+            disabled_if: "Already boosted"
+          
+          - button: "Share"
+            action: "Copy link to clipboard"
+      
+      signatures_list:
+        title: "Signatures"
+        display: "List of wallet addresses who signed"
+        pagination: "Show 20 per page"
+        elements:
+          - "Signer address (link to explorer)"
+          - "Signature time"
+          - "SBT badge (verified)"
+  
+  # 4. Create Petition (/create)
+  create_petition_page:
+    component: "CreatePetitionForm (from dashboard modal)"
+    note: "Can be accessed directly via URL or modal"
+
+# ============================================
+# UI COMPONENTS SPECIFICATIONS
+# ============================================
+components:
+  
+  Header:
+    position: "Sticky top"
+    design: "Glassmorphic with backdrop blur"
+    elements:
+      left: "Logo + Platform name"
+      center: "Navigation (Home | Dashboard | Create)"
+      right: "RainbowKit ConnectButton"
+  
+  PetitionCard:
+    design: "Glassmorphic card, hover:scale-105"
+    max_width: "380px"
+    elements:
+      - "Image (aspect-ratio: 16:9, object-fit: cover)"
+      - "🚀 Badge (if boosted, top-right corner)"
+      - "Title (2 lines max, text-overflow: ellipsis)"
+      - "Description (3 lines max)"
+      - "Footer: Signature count + Creator (shortened)"
+      - "Action button: 'Sign' or 'Signed ✓' or 'View Details'"
+  
+  MintSBTCard:
+    design: "Large prominent card with pulsing glow animation"
+    content:
+      - "Heading: 'Become a Verified Member'"
+      - "List of benefits (with checkmarks)"
+      - "CTA button: 'Mint Membership (Free)'"
+    states:
+      loading: "Show skeleton loader"
+      success: "Show success animation + SBT badge"
+  
+  TokenBalance:
+    display: "Show CAMP token balance"
+    format: "X.XX CAMP"
+    location: "Sidebar, Header, Create Petition form"
+    icon: "Token icon (🪙 or custom)"
+  
+  BoostBadge:
+    design: "Small badge with rocket icon"
+    text: "🚀 BOOSTED"
+    color: "Gradient (yellow → orange)"
+    animation: "Pulsing glow"
+    position: "Top-right of petition card"
+  
+  SignatureCount:
+    display: "Show total signatures"
+    format: "X,XXX signatures"
+    icon: "✍️"
+    animation: "Count up animation when incremented"
+  
+  LoadingStates:
+    skeleton: "Use for loading petition cards"
+    spinner: "Use for transactions"
+    toast: "Use for success/error messages"
+
+# ============================================
+# SMART CONTRACT INTEGRATION
+# ============================================
+contract_integration:
+  
+  config_file:
+    source: "src/contracts/contracts.json"
+    note: "Generated from hardhat deployment script"
+    contains:
+      - "Contract addresses"
+      - "Contract ABIs"
+      - "Network info (chain ID, RPC URL)"
+  
+  hooks:
+    useContracts:
+      description: "Initialize contract instances with wagmi"
+      returns:
+        - "getCampaignToken()"
+        - "getSoulboundMember()"
+        - "getPetitionPlatform()"
+    
+    useSBT:
+      functions:
+        - "mintMembership()"
+        - "checkMembership(address)"
+        - "getTokenBalance(address)"
+    
+    usePetitions:
+      functions:
+        - "createPetition(title, description, ipfsHash, useToken)"
+        - "getAllPetitions()"
+        - "getPetition(petitionId)"
+        - "signPetition(petitionId)"
+        - "boostPetition(petitionId)"
+        - "isPetitionBoosted(petitionId)"
+        - "hasUserSigned(petitionId, userAddress)"
+        - "getActiveBoostedPetitions()"
+  
+  sorting_frontend:
+    description: |
+      Frontend must implement sorting logic for getAllPetitions():
+      1. Filter petitions where boostEndTime > current_time (boosted)
+      2. Sort boosted by boostPriority DESC (highest first)
+      3. Append non-boosted petitions sorted by createdAt ASC
+    
+    example_code: |
+      const sortedPetitions = petitions.sort((a, b) => {
+        const now = Date.now() / 1000;
+        const aActive = a.boostEndTime > now;
+        const bActive = b.boostEndTime > now;
+        
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        if (aActive && bActive) return b.boostPriority - a.boostPriority;
+        
+        return a.createdAt - b.createdAt;
+      });
+
+# ============================================
+# IPFS INTEGRATION (PINATA)
+# ============================================
+ipfs:
+  provider: "Pinata"
+  api_key: "Use environment variable NEXT_PUBLIC_PINATA_API_KEY"
+  
+  upload_flow:
+    - step: 1
+      action: "User selects image in CreatePetition form"
+      ui: "Show image preview"
+    
+    - step: 2
+      action: "Upload to Pinata IPFS"
+      endpoint: "POST https://api.pinata.cloud/pinning/pinFileToIPFS"
+      headers:
+        - "Authorization: Bearer PINATA_JWT"
+      response: "Get IPFS hash (e.g., QmXXX...)"
+    
+    - step: 3
+      action: "Save IPFS hash to smart contract"
+      field: "petition.imageHash"
+    
+    - step: 4
+      action: "Display image from IPFS"
+      url_format: "https://gateway.pinata.cloud/ipfs/{hash}"
+  
+  fallback:
+    note: "If Pinata fails, show placeholder image and allow retry"
+
+# ============================================
+# ERROR HANDLING & VALIDATION
+# ============================================
+error_handling:
+  
+  wallet_not_connected:
+    message: "Please connect your wallet to continue"
+    action: "Show RainbowKit connect modal"
+  
+  wrong_network:
+    message: "Please switch to Lisk Sepolia Testnet"
+    action: "Show network switch prompt"
+  
+  no_sbt:
+    message: "You need to mint your Soulbound Member NFT first"
+    action: "Show MintSBT modal"
+  
+  insufficient_tokens:
+    message: "You don't have enough CAMP tokens"
+    action: "Show option to pay with ETH instead"
+  
+  creator_cannot_sign:
+    message: "You cannot sign your own petition"
+    ui: "Disable sign button + show info tooltip"
+  
+  already_signed:
+    message: "You already signed this petition"
+    ui: "Show 'Signed ✓' badge instead of button"
+  
+  transaction_failed:
+    message: "Transaction failed. Please try again."
+    action: "Show error toast with retry button"
+  
+  ipfs_upload_failed:
+    message: "Failed to upload image. Please try again."
+    action: "Show retry button in form"
+
+# ============================================
+# RESPONSIVE DESIGN
+# ============================================
+responsive:
+  breakpoints:
+    mobile: "< 640px"
+    tablet: "640px - 1024px"
+    desktop: "> 1024px"
+  
+  mobile_optimizations:
+    - "Single column layout"
+    - "Bottom navigation bar"
+    - "Simplified petition cards (smaller images)"
+    - "Drawer menu for filters"
+    - "Full-screen modals"
+  
+  tablet_optimizations:
+    - "Two-column grid for petitions"
+    - "Sidebar remains visible"
+  
+  desktop_optimizations:
+    - "Three-column grid for petitions"
+    - "Fixed sidebar"
+    - "Hover effects enabled"
+
+# ============================================
+# PERFORMANCE OPTIMIZATIONS
+# ============================================
+performance:
+  - "Use Next.js Image component for IPFS images"
+  - "Lazy load petition cards (react-intersection-observer)"
+  - "Cache contract data with React Query"
+  - "Optimize bundle size (tree-shaking)"
+  - "Use skeleton loaders for better perceived performance"
+  - "Debounce search input"
+  - "Pagination for large lists (20 items per page)"
+
+# ============================================
+# ACCESSIBILITY
+# ============================================
+accessibility:
+  - "Semantic HTML elements"
+  - "ARIA labels for buttons and interactive elements"
+  - "Keyboard navigation support"
+  - "Focus indicators visible"
+  - "Alt text for all images"
+  - "Color contrast meets WCAG AA standards"
+  - "Screen reader friendly"
+
+# ============================================
+# ADDITIONAL NOTES
+# ============================================
+notes:
+  gasless_implementation:
+    note: |
+      All transactions are gasless for users using Panna SDK on Lisk Sepolia.
+      UI should always show "Gas: $0" or "Gasless Transaction" to emphasize this benefit.
+  
+  real_time_updates:
+    note: |
+      Use polling or websocket to refresh petition data:
+      - Signature count updates in real-time
+      - Boost status changes
+      - New petitions appear automatically
+  
+  wallet_integration:
+    note: |
+      RainbowKit provides:
+      - Multi-wallet support (MetaMask, WalletConnect, etc.)
+      - Network switching
+      - Account switching
+      - Disconnect functionality
+  
+  seo:
+    note: |
+      Add meta tags for each page:
+      - Open Graph tags for social sharing
+      - Twitter Card tags
+      - Dynamic meta for petition detail pages
+
+# ============================================
+# FILE STRUCTURE (For Bolt.new)
+# ============================================
+file_structure: |
+  petition-platform/
+  ├── src/
+  │   ├── app/
+  │   │   ├── layout.tsx
+  │   │   ├── page.tsx (Landing)
+  │   │   ├── dashboard/
+  │   │   │   └── page.tsx
+  │   │   ├── petition/
+  │   │   │   └── [id]/
+  │   │   │       └── page.tsx
+  │   │   ├── create/
+  │   │   │   └── page.tsx
+  │   │   └── providers.tsx
+  │   ├── components/
+  │   │   ├── Header.tsx
+  │   │   ├── Footer.tsx
+  │   │   ├── PetitionCard.tsx
+  │   │   ├── PetitionList.tsx
+  │   │   ├── MintSBT.tsx
+  │   │   ├── CreatePetitionForm.tsx
+  │   │   ├── PetitionDetail.tsx
+  │   │   ├── BoostButton.tsx
+  │   │   ├── SignButton.tsx
+  │   │   └── ui/ (shadcn components)
+  │   ├── hooks/
+  │   │   ├── useContracts.ts
+  │   │   ├── useSBT.ts
+  │   │   ├── usePetitions.ts
+  │   │   └── useIPFS.ts
+  │   ├── lib/
+  │   │   ├── utils.ts
+  │   │   ├── sortPetitions.ts
+  │   │   └── formatters.ts
+  │   ├── contracts/
+  │   │   └── contracts.json (imported from hardhat)
+  │   └── config/
+  │       ├── wagmi.ts
+  │       └── constants.ts
+  ├── .env.local
+  └── package.json
+
+# ============================================
+# PROMPT FOR BOLT.NEW
+# ============================================
+bolt_prompt: |
+  Build a modern Web3 decentralized petition platform with the following requirements:
+  
+  **Core Features:**
+  - Landing page with glassmorphism dark theme
+  - User onboarding: Connect wallet → Mint Soulbound Token (SBT) → Get 1 CAMP token
+  - Create petitions: Pay with CAMP token (free) OR 0.002 ETH
+  - Sign petitions: One signature per wallet per petition (gasless)
+  - Boost petitions: Creators pay 0.001 ETH to boost for 7 days
+  - Sorting: Boosted petitions first (by boostPriority DESC), then by creation date
+  
+  **Tech Stack:**
+  - Next.js 14 (App Router) + TypeScript
+  - Tailwind CSS (dark glassmorphism design)
+  - Wagmi + RainbowKit for Web3
+  - Lisk Sepolia testnet (Chain ID: 4202)
+  - All transactions are GASLESS (Panna SDK)
+  
+  **Smart Contracts:**
+  Import from: src/contracts/contracts.json (contains addresses + ABIs for):
+  - CampaignToken (ERC-20)
+  - SoulboundMember (ERC-721, non-transferable)
+  - PetitionPlatform (ERC-1155)
+  
+  **Key Rules:**
+  - Only SBT holders can create/sign petitions
+  - Creators CANNOT sign their own petitions
+  - One signature per wallet per petition
+  - Boost system: first-come-first-served priority
+  - Images uploaded to IPFS (Pinata)
+  
+  **UI Components Needed:**
+  - Header with wallet connect (RainbowKit)
+  - Hero section with animated background
+  - MintSBT card (if user has no SBT)
+  - CreatePetition form (with IPFS upload)
+  - PetitionCard (glassmorphic, with boost badge)
+  - PetitionList (sorted correctly)
+  - PetitionDetail page (with sign/boost buttons)
+  - Dashboard (user's petitions + signatures)
+  
+  **Design:**
+  - Dark mode only
+  - Glassmorphism style (backdrop-blur, transparent cards, glowing borders)
+  - Smooth animations (fade, slide, scale on hover)
+  - Responsive (mobile-first)
+  - Loading states + toast notifications
+  
+  Create a complete, production-ready app with all pages, components, and blockchain integration.
+  Use the contract structure and logic exactly as specified in the YAML above.
