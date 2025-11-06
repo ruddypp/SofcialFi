@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "SlotDerivation",
+  "sourceName": "@openzeppelin/contracts/utils/SlotDerivation.sol",
+  "abi": [],
+  "bytecode": "0x60808060405234601757603a9081601d823930815050f35b600080fdfe600080fdfea26469706673582212207692fe305e35f2366dbec8233947bf093aca4c8f71475b5ffe05c57ed6649f7264736f6c634300081e0033",
+  "deployedBytecode": "0x600080fdfea26469706673582212207692fe305e35f2366dbec8233947bf093aca4c8f71475b5ffe05c57ed6649f7264736f6c634300081e0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
